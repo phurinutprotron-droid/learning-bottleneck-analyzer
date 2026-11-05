@@ -1,0 +1,52 @@
+name: Cloudflare Python compatibility
+on:
+  push:
+    branches: [cloudflare-free]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  python-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: astral-sh/setup-uv@v6
+      - name: Start local Cloudflare Python runtime
+        working-directory: cloudflare
+        run: |
+          uv run pywrangler dev --local --port 8787 > /tmp/lba-worker.log 2>&1 &
+          echo "$!" > /tmp/lba-worker.pid
+          for attempt in $(seq 1 120); do
+            if curl --silent --fail http://127.0.0.1:8787/ > /tmp/lba-probe.json; then
+              cat /tmp/lba-probe.json
+              exit 0
+            fi
+            if ! kill -0 "$(cat /tmp/lba-worker.pid)" 2>/dev/null; then
+              cat /tmp/lba-worker.log
+              exit 1
+            fi
+            sleep 3
+          done
+          cat /tmp/lba-worker.log
+          exit 1
+      - name: Check required dependencies and password hashing
+        run: |
+          python3 - <<'PY'
+          import json
+          with open("/tmp/lba-probe.json") as source:
+              result = json.load(source)
+          assert all(status == "ok" for status in result["imports"].values()), result
+          assert result["scrypt"] is True, result
+          print(result)
+          PY
+      - name: Diagnostic output
+        if: failure()
+        run: cat /tmp/lba-worker.log || true
+      - name: Stop probe
+        if: always()
+        run: |
+          if [ -f /tmp/lba-worker.pid ]; then kill "$(cat /tmp/lba-worker.pid)" || true; fi
