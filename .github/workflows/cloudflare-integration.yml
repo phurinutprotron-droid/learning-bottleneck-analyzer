@@ -26,6 +26,7 @@ jobs:
               except urllib.error.HTTPError as exc: response=exc
               status=response.status;raw=response.read(500000);response_headers=response.headers
               print(json.dumps({"route":path.split("?")[0],"status":status,"duration_ms":round((time.monotonic()-started)*1000),"request_id":response_headers.get("X-Request-ID"),"correlation_id":correlation,"cf_ray":response_headers.get("CF-Ray")}),flush=True)
+              if status!=expected and path=="/health": print(raw[:800].decode(errors="replace"),flush=True)
               assert status==expected,f"{method} {path}: expected {expected}, received {status}"
               if expected!=204 and status<400 and custom_origin==origin:
                   assert response_headers.get("Access-Control-Allow-Origin")==custom_origin,"Allowed-origin CORS header missing"
