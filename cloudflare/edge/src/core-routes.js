@@ -61,7 +61,7 @@ export async function coreRoutes(ctx) {
   }
   if (path === '/api/students' && method === 'GET') {
     ctx.route = path; staff(user);
-    return ok(await ctx.q("SELECT s.id,s.anonymous_id,s.grade,COUNT(a.id)::int AS assessments_completed FROM students s LEFT JOIN assessments a ON a.student_id=s.id AND a.status='completed' GROUP BY s.id ORDER BY s.anonymous_id"));
+    return ok(await ctx.q("SELECT s.id,s.anonymous_id,s.grade,COUNT(a.id)::int AS assessments_completed FROM students s JOIN users u ON u.id=s.user_id LEFT JOIN assessments a ON a.student_id=s.id AND a.status='completed' WHERE NOT u.is_demo GROUP BY s.id ORDER BY s.anonymous_id"));
   }
   if ((match = /^\/api\/students\/([^/]+)$/.exec(path))) {
     ctx.route = '/api/students/:id';

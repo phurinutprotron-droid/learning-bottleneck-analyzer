@@ -1,15 +1,115 @@
 {
-  "name": "lba-edge-integration",
+  "name": "lba-edge-build",
   "main": "src/index.js",
   "compatibility_date": "2026-11-05",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "workers_dev": false,
-  "placement": {"region": "aws:ap-southeast-1"},
+  "placement": {
+    "region": "aws:ap-southeast-1"
+  },
   "observability": {
     "enabled": true,
     "redact_query_string": true,
-    "logs": {"enabled": true, "invocation_logs": false},
-    "traces": {"enabled": true}
+    "logs": {
+      "enabled": true,
+      "invocation_logs": false
+    },
+    "traces": {
+      "enabled": true
+    }
+  },
+  "env": {
+    "production": {
+      "name": "lba-api",
+      "workers_dev": true,
+      "vars": {
+        "CORS_ORIGINS": "[\"https://phurinutprotron-droid.github.io\"]",
+        "AI_PROVIDER": "deterministic",
+        "GEMINI_MODEL": "gemini-3.8-flash",
+        "OPENROUTER_MODEL": "stealth/crouton-alpha",
+        "OPENROUTER_TASK_MODELS": "{}"
+      },
+      "hyperdrive": [
+        {
+          "binding": "HYPERDRIVE",
+          "id": "caf6616a48104d45b6c7f9295bb661b4"
+        }
+      ],
+      "ratelimits": [
+        {
+          "name": "REQUEST_LIMITER",
+          "namespace_id": "2201",
+          "simple": {
+            "limit": 120,
+            "period": 60
+          }
+        },
+        {
+          "name": "AUTH_LIMITER",
+          "namespace_id": "2202",
+          "simple": {
+            "limit": 60,
+            "period": 60
+          }
+        }
+      ],
+      "secrets": {
+        "required": [
+          "PASSWORD_PEPPER"
+        ]
+      },
+      "observability": {
+        "enabled": true,
+        "redact_query_string": true,
+        "logs": {
+          "enabled": true,
+          "invocation_logs": false,
+          "head_sampling_rate": 0.1
+        },
+        "traces": {
+          "enabled": true,
+          "head_sampling_rate": 0.1
+        }
+      }
+    },
+    "integration": {
+      "name": "lba-edge-integration",
+      "workers_dev": false,
+      "vars": {
+        "CORS_ORIGINS": "[\"https://phurinutprotron-droid.github.io\"]",
+        "AI_PROVIDER": "deterministic"
+      },
+      "hyperdrive": [
+        {
+          "binding": "HYPERDRIVE",
+          "id": "15d665497a5a497e878d141690ba94ba"
+        }
+      ],
+      "ratelimits": [
+        {
+          "name": "REQUEST_LIMITER",
+          "namespace_id": "2101",
+          "simple": {
+            "limit": 120,
+            "period": 60
+          }
+        },
+        {
+          "name": "AUTH_LIMITER",
+          "namespace_id": "2102",
+          "simple": {
+            "limit": 20,
+            "period": 60
+          }
+        }
+      ],
+      "secrets": {
+        "required": [
+          "PASSWORD_PEPPER"
+        ]
+      }
+    }
   }
 }
-
