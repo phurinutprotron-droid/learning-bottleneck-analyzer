@@ -1,0 +1,118 @@
+name: Cloudflare native integration
+on:
+  push:
+    branches: [cloudflare-free]
+    paths: ['.github/workflows/cloudflare-edge-integration.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Test the live Worker with isolated synthetic accounts
+        run: |
+          python3 - <<'PY'
+          import json,os,secrets,time,urllib.error,urllib.request,uuid
+          base="https://lba-edge-integration.lba-phurinut.workers.dev"
+          origin="https://phurinutprotron-droid.github.io"
+          def call(path,method="GET",data=None,token=None,expected=200,custom_origin=origin,parse_json=True):
+              correlation=str(uuid.uuid4());started=time.monotonic()
+              headers={"Content-Type":"application/json","Origin":custom_origin,"X-Request-ID":correlation,"User-Agent":"LBA-deployment-check/1.0"}
+              if token: headers["Authorization"]="Bearer "+token
+              req=urllib.request.Request(base+path,data=json.dumps(data).encode() if data is not None else None,headers=headers,method=method)
+              try: response=urllib.request.urlopen(req,timeout=25)
+              except urllib.error.HTTPError as exc: response=exc
+              status=response.status;raw=response.read(500000);response_headers=response.headers
+              print(json.dumps({"route":path.split("?")[0],"status":status,"duration_ms":round((time.monotonic()-started)*1000),"request_id":response_headers.get("X-Request-ID"),"correlation_id":correlation,"cf_ray":response_headers.get("CF-Ray")}),flush=True)
+              if status!=expected and path=="/health": print(raw[:800].decode(errors="replace"),flush=True)
+              assert status==expected,f"{method} {path}: expected {expected}, received {status}"
+              if expected!=204 and status<400 and custom_origin==origin:
+                  assert response_headers.get("Access-Control-Allow-Origin")==custom_origin,"Allowed-origin CORS header missing"
+              return ((json.loads(raw) if parse_json else raw.decode()) if raw else None),response_headers
+          health,_=call("/health")
+          assert health["status"]=="ok"
+          _,headers=call("/health",custom_origin="https://untrusted.example")
+          assert headers.get("Access-Control-Allow-Origin") is None
+          run=os.environ["GITHUB_RUN_ID"]+"_"+os.environ["GITHUB_RUN_ATTEMPT"]
+          records=[]
+          for label in ("a","b","teacher","demo"):
+              password=secrets.token_urlsafe(24);handle="cf_"+label+"_"+run
+              record,_=call("/api/auth/register","POST",{"handle":handle,"password":password,"grade":7},expected=201)
+              records.append((handle,password,record))
+          a,b,c,d=records
+          token=a[2]["access_token"];other=b[2]["user"]["student_id"];own=a[2]["user"]["student_id"]
+          call("/api/auth/login/teacher","POST",{"handle":a[0],"password":a[1]},expected=403)
+          call("/api/auth/login/student","POST",{"handle":a[0],"password":"incorrect-synthetic-password"},expected=401)
+          call("/api/auth/me",token=token)
+          call("/api/students/"+own,token=token)
+          call("/api/students/"+other,token=token,expected=403)
+          call("/api/students",token=token,expected=403)
+          subjects,_=call("/api/subjects",token=token)
+          assert len(subjects)>0
+          graph,_=call("/api/graph",token=token)
+          assert graph["nodes"] and graph["edges"]
+          call("/api/students/"+own+"/consent","POST",{"granted":True},token=token)
+          assessment,_=call("/api/students/"+own+"/assessments","POST",{"subject_id":subjects[0]["id"],"stage":"pre"},token=token,expected=201)
+          call("/api/assessments/"+assessment["id"],token=b[2]["access_token"],expected=403)
+          print("Awaiting teacher provisioning for "+c[0],flush=True)
+          teacher=None
+          for attempt in range(60):
+              data=json.dumps({"handle":c[0],"password":c[1]}).encode()
+              req=urllib.request.Request(base+"/api/auth/login/teacher",data=data,headers={"Content-Type":"application/json","Origin":origin,"User-Agent":"LBA-deployment-check/1.0"},method="POST")
+              try:
+                  with urllib.request.urlopen(req,timeout=25) as response: teacher=json.load(response)
+                  break
+              except urllib.error.HTTPError as exc:
+                  if exc.code==429:\n                      time.sleep(60);continue\n                  assert exc.code==403,"Teacher provisioning check failed"
+              time.sleep(3)
+          assert teacher is not None,"Teacher provisioning is pending"
+          assert teacher["user"]["role"]=="teacher"
+          call("/api/auth/login/student","POST",{"handle":c[0],"password":c[1]},expected=403)
+          call("/api/students",token=teacher["access_token"])
+          call("/api/curriculum/status",token=teacher["access_token"])
+          call("/api/auth/login/student","POST",{"handle":d[0],"password":d[1]},expected=401)
+          call("/api/auth/me",token=d[2]["access_token"],expected=401)
+          hidden,_=call("/api/assessments/"+assessment["id"],token=token)
+          assert all("correct" not in response and "rubric" not in response for response in hidden["responses"])
+          assert all("answers" not in item and "rubric" not in item for item in hidden["items"])
+          for item in assessment["items"]:
+              answer=item["options"][0] if item["options"] else "synthetic incorrect answer"
+              call("/api/assessments/"+assessment["id"]+"/responses","POST",{"item_id":item["id"],"answer":answer,"reasoning":"Synthetic software test explanation; no learning claim.","confidence":3},token=token,expected=201)
+          first=assessment["items"][0]
+          call("/api/assessments/"+assessment["id"]+"/responses","POST",{"item_id":first["id"],"answer":first["options"][0] if first["options"] else "synthetic incorrect answer","reasoning":"Synthetic immutable response test","confidence":3},token=token,expected=409)
+          call("/api/assessments/"+assessment["id"]+"/complete","POST",token=token)
+          run,_=call("/api/assessments/"+assessment["id"]+"/diagnostics","POST",token=token,expected=201)
+          call("/api/diagnostics/"+run["id"],token=b[2]["access_token"],expected=403)
+          call("/api/diagnostics/"+run["id"]+"/recommendations",token=teacher["access_token"])
+          advisory,_=call("/api/diagnostics/"+run["id"]+"/ai-assist","POST",{"operation":"reasoning_analysis"},token=teacher["access_token"])
+          assert advisory["fallback"] is True and advisory["provider"]=="deterministic"
+          verification,_=call("/api/diagnostics/"+run["id"]+"/verification","POST",token=token,expected=201)
+          verify=verification["assessment"]
+          call("/api/assessments/"+verify["id"]+"/verification",token=token)
+          for item in verify["items"]:
+              call("/api/assessments/"+verify["id"]+"/responses","POST",{"item_id":item["id"],"answer":item["options"][0] if item["options"] else "synthetic incorrect answer","reasoning":"Synthetic verification software test.","confidence":3},token=token,expected=201)
+          call("/api/assessments/"+verify["id"]+"/complete","POST",token=token)
+          call("/api/verifications/"+verification["id"]+"/evaluate","POST",token=token)
+          concept=subjects[0]["concepts"][0]["id"]
+          intervention,_=call("/api/interventions","POST",{"student_id":own,"subject_id":subjects[0]["id"],"baseline_assessment_id":assessment["id"],"concept_id":concept,"activity":"Synthetic software test activity only.","expected_outcome":"Synthetic expected outcome for software testing.","review_note":"Synthetic teacher review for software testing."},token=teacher["access_token"],expected=201)
+          call("/api/interventions/"+intervention["id"],"PATCH",{"status":"completed","review_note":"Synthetic completion for software testing."},token=teacher["access_token"])
+          call("/api/interventions/"+intervention["id"],"PATCH",{"status":"assigned","review_note":"Immutable history must reject this change."},token=teacher["access_token"],expected=409)
+          followup,_=call("/api/students/"+own+"/assessments","POST",{"subject_id":subjects[0]["id"],"stage":"post","intervention_id":intervention["id"]},token=token,expected=201)
+          for item in followup["items"]:
+              call("/api/assessments/"+followup["id"]+"/responses","POST",{"item_id":item["id"],"answer":item["options"][0] if item["options"] else "synthetic incorrect answer","reasoning":"Synthetic follow-up software test.","confidence":3},token=token,expected=201)
+          call("/api/assessments/"+followup["id"]+"/complete","POST",token=token)
+          call("/api/students/"+own+"/assessments","POST",{"subject_id":subjects[0]["id"],"stage":"retention","intervention_id":intervention["id"]},token=token,expected=409)
+          summary,_=call("/api/research/summary",token=teacher["access_token"])
+          assert summary["include_demo"] is False and summary["stages"]["post"]["performance"]["n"]>=1
+          call("/api/research/summary",token=b[2]["access_token"],expected=403)
+          report,_=call("/api/research/export",token=teacher["access_token"],parse_json=False)
+          assert report.startswith("metric,stage,n,value,interpretation,dataset") and "cf_a_" not in report
+          exam,_=call("/api/curriculum/exam-drafts","POST",{"indicator_id":"rational","count":3,"seed":42},token=teacher["access_token"])
+          repeated,_=call("/api/curriculum/exam-drafts","POST",{"indicator_id":"rational","count":3,"seed":42},token=teacher["access_token"])
+          assert exam==repeated and len(exam["items"])==3 and exam["status"]=="draft"
+          call("/api/auth/logout","POST",token=token,expected=204)
+          call("/api/auth/me",token=token,expected=401)
+          print("Live native registration, demo blocking, roles, ownership, assessment, diagnostics, verification, interventions, research, seeded exams and logout passed",flush=True)
+          PY
