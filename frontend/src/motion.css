@@ -1,0 +1,282 @@
+:root {
+  --motion-fast: 140ms;
+  --motion-enter: 280ms;
+  --motion-data: 360ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-distance: 5px;
+}
+
+.assessment-prompt {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@keyframes lba-enter {
+  from {
+    opacity: 0.55;
+    transform: translateY(var(--motion-distance));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lba-fade {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.motion-enter,
+.motion-sidebar,
+.motion-feedback,
+.form-feedback {
+  animation: lba-enter var(--motion-enter) var(--motion-ease) both;
+}
+.motion-sidebar {
+  --motion-distance: 4px;
+}
+.motion-feedback,
+.form-feedback {
+  --motion-distance: 3px;
+}
+.motion-enter .stat,
+.motion-enter .subject-card {
+  animation: lba-fade var(--motion-data) var(--motion-ease) both;
+}
+
+.main-column {
+  background-image: radial-gradient(
+    ellipse 42rem 22rem at 92% 0%,
+    color-mix(in srgb, var(--accent) 6%, transparent),
+    transparent
+  );
+  background-repeat: no-repeat;
+}
+
+.portal-picker button,
+.primary,
+.secondary,
+.icon-button,
+.text-button,
+.sidebar nav button,
+.subject-card,
+.stat,
+.answer-option,
+.confidence-options label {
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .subject-card:hover,
+  .stat:hover {
+    border-color: var(--accent);
+  }
+  .sidebar nav button:hover,
+  .text-button:hover {
+    background-color: var(--soft);
+  }
+}
+.primary:active:not(:disabled),
+.secondary:active:not(:disabled),
+.icon-button:active:not(:disabled),
+.sidebar nav button:active {
+  transform: translateY(1px);
+}
+.nav-dot {
+  animation: lba-fade var(--motion-fast) var(--motion-ease) both;
+}
+.progress-track > div {
+  width: 100%;
+  transform-origin: left;
+  transition: transform var(--motion-data) var(--motion-ease);
+}
+.motion-pending {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-block: 0.75rem;
+  color: var(--muted);
+}
+.motion-skeleton {
+  min-height: 5rem;
+  align-content: center;
+}
+.motion-placeholder {
+  flex-basis: 100%;
+  height: 0.65rem;
+  border-radius: 0.5rem;
+  background: var(--line);
+  animation: lba-fade 650ms ease-in-out 2 alternate;
+}
+.motion-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+.motion-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: lba-fade 520ms ease-in-out 3 alternate both;
+}
+.motion-dots i:nth-child(2) {
+  animation-delay: 90ms;
+}
+.motion-dots i:nth-child(3) {
+  animation-delay: 180ms;
+}
+
+.graph-controls {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.graph-node {
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease),
+    opacity var(--motion-fast) var(--motion-ease);
+}
+.graph-node-muted {
+  opacity: 0.72;
+}
+.graph .react-flow__edge-path {
+  transition:
+    stroke var(--motion-fast) var(--motion-ease),
+    stroke-width var(--motion-fast) var(--motion-ease);
+}
+.graph-path {
+  overflow-wrap: anywhere;
+}
+.motion-dialog {
+  width: min(32rem, calc(100% - 2rem));
+  max-height: 85dvh;
+  margin: auto;
+  color: var(--text);
+  background: var(--panel);
+  opacity: 0;
+  transform: translateY(var(--motion-distance));
+  transition:
+    opacity var(--motion-enter) var(--motion-ease),
+    transform var(--motion-enter) var(--motion-ease),
+    display var(--motion-enter) allow-discrete,
+    overlay var(--motion-enter) allow-discrete;
+}
+.motion-dialog[open] {
+  opacity: 1;
+  transform: translateY(0);
+}
+.motion-dialog::backdrop {
+  background: rgb(13 28 22 / 0.44);
+}
+@starting-style {
+  .motion-dialog[open] {
+    opacity: 0;
+    transform: translateY(var(--motion-distance));
+  }
+}
+@media (max-width: 760px) {
+  :root {
+    --motion-distance: 3px;
+    --motion-enter: 170ms;
+  }
+  .main-column {
+    background-image: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-distance: 0px;
+  }
+  .motion-dots {
+    display: none;
+  }
+}
+
+.portal-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 1.25rem;
+}
+.portal-picker button {
+  flex: 1;
+  min-height: 44px;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--line);
+  color: inherit;
+  background: transparent;
+}
+.portal-picker button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--soft);
+  font-weight: 700;
+}
+.portal-content { --motion-distance: 4px; }
+
+.auth-layout {
+  --portal-background: #163f32;
+  --portal-highlight: #d0dcae;
+  --portal-accent: #287259;
+  --portal-motion: 340ms;
+}
+.auth-layout[data-portal="teacher"] {
+  --portal-background: #183859;
+  --portal-highlight: #c3dcfc;
+  --portal-accent: #315f99;
+}
+.auth-layout[data-portal="researcher"] {
+  --portal-background: #392851;
+  --portal-highlight: #e0ccf7;
+  --portal-accent: #715097;
+}
+.auth-layout .auth-story {
+  background-color: var(--portal-background);
+  transition: background-color var(--portal-motion) var(--motion-ease);
+}
+.auth-layout .auth-story :is(.eyebrow, h1 em) {
+  color: var(--portal-highlight);
+  transition: color var(--portal-motion) var(--motion-ease);
+}
+.auth-layout .auth-story .brand-icon,
+.auth-layout .auth-form .primary {
+  background-color: var(--portal-accent);
+}
+.auth-layout .portal-picker button[aria-pressed="true"] {
+  border-color: var(--portal-accent);
+  background-color: color-mix(in srgb, var(--portal-accent) 15%, var(--soft));
+}
+.portal-stories {
+  display: grid;
+}
+.portal-story-copy {
+  grid-area: 1 / 1;
+  opacity: 1;
+  transition: opacity var(--portal-motion) var(--motion-ease);
+}
+.portal-story-copy[aria-hidden="true"] {
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+}
+@media (max-width: 900px) {
+  .auth-layout .auth-copy {
+    display: block;
+    margin: 0;
+    padding: 12px 0 0;
+  }
+  .auth-layout .auth-copy :is(h1, p, .story-path) {
+    display: none;
+  }
+}

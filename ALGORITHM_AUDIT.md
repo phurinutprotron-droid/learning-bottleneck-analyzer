@@ -1,0 +1,15 @@
+# LBA algorithm audit
+
+| Algorithm | Current implementation | Validation and limitations |
+| --- | --- | --- |
+| Evidence aggregation | Item correctness, lexical rubric alignment, misconception phrases, response IDs and confidence observations. Stage-level evidence is recorded. | Deterministic fixtures cover correctness/reasoning disagreements and contradiction. Lexical matching can miss paraphrases or mishandle negation. Confidence is descriptive. Transfer and previous learning evidence do not drive the baseline inference. |
+| Competing explanations | Rules can emit a knowledge gap, slip, misconception, reasoning gap or inconsistent understanding. Low counts add insufficient-evidence hypotheses. | Synthetic outcomes are traceable. Support is a heuristic score. Hypotheses are neither calibrated probabilities nor independent expert judgments. |
+| Priority | Weighted components for evidence, certainty, repetition, downstream reach, performance and verification. | Non-finite weights rejected. Performance-only fixture produces score and contribution of 100. No-evidence priority is zero, although the component display can still show potential downstream reach. Contributions are rounded separately. Severity and duplicate-evidence sensitivity need independent review. |
+| Adaptive verification | Unused curated items rank by competing explanation coverage, uncertainty and priority. Fixed rule updates follow a completed item. | Contradiction and exhaustion exercised. Remaining uncertainty is heuristic. No measured information gain, adaptive difficulty calibration or empirically validated stopping threshold. |
+| Dependencies | Directed prerequisite edges support forward and reverse traversal and cycle rejection. Cross-subject links remain separate. | A graph path supplies a candidate prerequisite relationship. Expert agreement, observed associations and experimental effects require distinct evidence. |
+| Transfer and retention | Follow-up scores and descriptive differences from a target concept baseline. | Post and transfer workflows pass. Forms are uncalibrated and transfer distance is not classified as near or far. Delayed retention and response signatures require further validation. |
+| Research metrics | Descriptive means and standard errors, Cohen's kappa and exploratory Cronbach alpha. | Unit fixtures cover missing or undefined metrics. Repeated learners and unmatched forms need grouped analysis and form checks before inference. |
+
+New diagnostic runs use `rules-v2`. The reasoning-gap rule now compares aligned **correct** responses with all correct responses. Previously an aligned wrong answer could hide an unaligned correct answer. The regression fixture explicitly pairs those two observations. Existing runs retain their original persisted evidence, hypotheses and version. Historical views still recompute their heuristic priority for display as documented in QA_AUDIT.md.
+
+Gemini output is advisory and source-validated. The live 503 fallback does not constitute Gemini output. No synthetic fixture establishes learner diagnostic accuracy.
