@@ -1,0 +1,40 @@
+name: Cloudflare live password compatibility
+on:
+  push:
+    branches: [cloudflare-free]
+    paths: ['.github/workflows/cloudflare-live-probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Three controlled live requests with synthetic data
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, time, urllib.request, urllib.error, uuid
+          expected=hashlib.scrypt(b"synthetic-password",salt=b"synthetic-salt",n=16384,r=8,p=1).hex()
+          results=[]
+          for attempt in range(1,4):
+              correlation=str(uuid.uuid4())
+              url="https://lba-compatibility-probe.lba-phurinut.workers.dev/?probe="+correlation
+              request=urllib.request.Request(url,headers={"X-Request-ID":correlation,"User-Agent":"LBA-deployment-check/1.0"})
+              started=time.monotonic()
+              result={"attempt":attempt,"correlation_id":correlation}
+              try:
+                  with urllib.request.urlopen(request,timeout=20) as response:
+                      body=response.read(2048).decode()
+                      result.update(status=response.status,cf_ray=response.headers.get("CF-Ray"))
+                      data=json.loads(body)
+                      result.update(scrypt_ok=data.get("scrypt_ok"),legacy_digest_matches=data.get("synthetic_digest")==expected,wall_ms=data.get("wall_ms"))
+              except urllib.error.HTTPError as exc:
+                  result.update(status=exc.code,cf_ray=exc.headers.get("CF-Ray"),body=exc.read(300).decode(errors="replace"))
+              except Exception as exc:
+                  result.update(error_type=type(exc).__name__,message=str(exc)[:180])
+              result["duration_ms"]=round((time.monotonic()-started)*1000)
+              print(json.dumps(result),flush=True)
+              results.append(result)
+          assert all(r.get("status")==200 and r.get("legacy_digest_matches") for r in results), "Live compatibility gate failed; do not deploy the app"
+          PY
