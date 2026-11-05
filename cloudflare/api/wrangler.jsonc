@@ -1,0 +1,14 @@
+{
+  "name": "lba-api-integration",
+  "main": "entry.py",
+  "compatibility_date": "2026-11-05",
+  "compatibility_flags": ["python_workers"],
+  "workers_dev": false,
+  "placement": {"region": "aws:ap-southeast-1"},
+  "observability": {
+    "enabled": true,
+    "redact_query_string": true,
+    "traces": {"enabled": true}
+  }
+}
+

@@ -1,5 +1,6 @@
 """Expose ingestion readiness without publishing unreviewed curriculum text."""
 import json
+import sys
 from pathlib import Path
 from typing import Literal
 
@@ -14,7 +15,7 @@ from app.services.curriculum_exam import generate_exam, indicator_catalog
 from app.services.qwen_exam import OBEC_CURRICULUM, OBEC_INDICATORS, generate_qwen_exam
 
 router = APIRouter(tags=['Curriculum'])
-ARCHIVE = Path(__file__).resolve().parents[3] / 'curriculum_archive'
+ARCHIVE = Path(__file__).resolve().parents[2 if sys.platform == 'emscripten' else 3] / 'curriculum_archive'
 
 
 @router.get('/curriculum/status')
@@ -76,3 +77,4 @@ class AIExamDraftRequest(BaseModel):
 @router.post('/curriculum/ai-exam-drafts', dependencies=[Depends(staff)])
 async def ai_exam_draft(body: AIExamDraftRequest):
     return await generate_qwen_exam(body.model_dump(exclude={'count', 'allow_paid'}), body.count)
+

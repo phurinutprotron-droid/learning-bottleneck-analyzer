@@ -5,8 +5,12 @@ import random
 import time
 import uuid
 import httpx
-from google import genai
-from google.genai import errors, types
+import sys
+if sys.platform != 'emscripten':
+    from google import genai
+    from google.genai import errors, types
+else:
+    genai = None
 from app.core.logging import request_id_context
 from app.schemas.contracts import AISuggestion
 from app.subjects.base_pack import Item
@@ -40,6 +44,9 @@ class GeminiProvider:
         self.settings = settings
 
     async def suggest(self, operation: str, context: dict) -> dict:
+        if genai is None:
+            from app.services.gemini_worker import WorkerGeminiProvider
+            return await WorkerGeminiProvider(self.settings).suggest(operation, context)
         s = self.settings
         reason = None
         if not s.gemini_api_key or not s.gemini_model:
@@ -114,3 +121,4 @@ class GeminiProvider:
                                 'fallback': False, 'requires_teacher_review': True, 'suggestion': suggestion.model_dump()}
         fallback = await DeterministicProvider().suggest(operation, context)
         return {**fallback, 'fallback_reason': reason, 'requested_model_id': s.gemini_model or None}
+

@@ -1,5 +1,7 @@
 from functools import lru_cache
 from typing import Literal
+import json
+import sys
 from urllib.parse import urlsplit
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,6 +23,7 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = 120
     password_hash_backend: Literal['scrypt', 'postgres_bcrypt'] = 'scrypt'
     password_pepper: str = ''
+    runtime: Literal['server', 'cloudflare'] = 'server'
 
     @model_validator(mode='after')
     def validate_password_backend(self):
@@ -44,7 +47,8 @@ class Settings(BaseSettings):
     def validate_production(self):
         if self.environment.casefold() != 'production':
             return self
-        if not self.database_url.startswith('postgresql+psycopg://'):
+        allowed_driver = 'postgresql+pg8000://' if self.runtime == 'cloudflare' else 'postgresql+psycopg://'
+        if not self.database_url.startswith(allowed_driver):
             raise ValueError('Production requires a PostgreSQL psycopg database URL')
         for origin in self.cors_origins:
             url = urlsplit(origin)
@@ -57,5 +61,16 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    if sys.platform == 'emscripten':
+        from workers import env
+        return Settings(_env_file=None, runtime='cloudflare', environment='production',
+            database_url='postgresql+pg8000://hyperdrive/lba',
+            cors_origins=json.loads(str(env.CORS_ORIGINS)),
+            password_hash_backend='postgres_bcrypt', password_pepper=str(env.PASSWORD_PEPPER),
+            ai_provider=str(getattr(env, 'AI_PROVIDER', 'deterministic')),
+            gemini_api_key=str(getattr(env, 'GEMINI_API_KEY', '')),
+            gemini_model=str(getattr(env, 'GEMINI_MODEL', '')),
+            openrouter_api_key=str(getattr(env, 'OPENROUTER_API_KEY', '')),
+            openrouter_model=str(getattr(env, 'OPENROUTER_MODEL', '')))
     return Settings()
 

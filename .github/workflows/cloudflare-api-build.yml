@@ -1,0 +1,73 @@
+name: Build Cloudflare LBA API
+on:
+  push:
+    branches: [cloudflare-free]
+    paths: ['backend/**', 'cloudflare/api/**', '.github/workflows/cloudflare-api-build.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      UV_PROJECT_ENVIRONMENT: /tmp/lba-api-build-venv
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: astral-sh/setup-uv@v6
+      - name: Stage existing application source and curriculum JSON
+        run: |
+          python3 - <<'PY'
+          import pathlib, shutil
+          root=pathlib.Path("cloudflare/api")
+          shutil.copytree("backend/app",root/"app",ignore=shutil.ignore_patterns("tests","__pycache__"))
+          target=root/"curriculum_archive"
+          target.mkdir()
+          for source in pathlib.Path("curriculum_archive").glob("*.json"):
+              shutil.copy2(source,target/source.name)
+          PY
+      - name: Build with official Python Workers packaging
+        working-directory: cloudflare/api
+        run: uv run pywrangler deploy --dry-run --outdir /tmp/lba-api-build
+      - name: Prepare generated artifact branch
+        run: |
+          if git fetch origin cloudflare-probe-artifacts; then
+            git worktree add --detach /tmp/lba-api-artifacts FETCH_HEAD
+          else
+            git worktree add --detach /tmp/lba-api-artifacts HEAD
+          fi
+      - name: Package source and dependencies without virtualenv duplicates
+        run: |
+          python3 - <<'PY'
+          import base64,gzip,hashlib,json,os,pathlib,struct
+          root=pathlib.Path("/tmp/lba-api-build")
+          files=[p for p in root.rglob("*") if p.is_file() and p.name!="README.md" and not str(p.relative_to(root)).startswith((".venv/",".venv-workers/"))]
+          entries=[]; body=bytearray()
+          for p in files:
+              data=p.read_bytes()
+              entries.append({"name":str(p.relative_to(root)),"size":len(data)})
+              body.extend(data)
+          assert any(e["name"]=="app/main.py" for e in entries)
+          assert not any("cryptography/" in e["name"] or "google/genai/" in e["name"] for e in entries), "Worker must not bundle heavy SDK crypto"
+          header=json.dumps(entries).encode()
+          raw=struct.pack(">I",len(header))+header+body
+          packed=base64.b64encode(gzip.compress(raw,mtime=0)).decode()
+          target=pathlib.Path("/tmp/lba-api-artifacts/artifacts")/("api-"+os.environ["GITHUB_SHA"])
+          target.mkdir(parents=True)
+          chunks=[]
+          for i in range(0,len(packed),400000):
+              name=f"chunk-{i//400000:03}.txt"
+              (target/name).write_text(packed[i:i+400000]);chunks.append(name)
+          manifest={"source_commit":os.environ["GITHUB_SHA"],"encoding":"base64+gzip+binary-header-json","sha256":hashlib.sha256(raw).hexdigest(),"chunks":chunks,"modules":len(entries),"raw_bytes":len(raw),"packed_bytes":len(packed)}
+          (target/"manifest.json").write_text(json.dumps(manifest));print(manifest)
+          PY
+      - name: Publish generated artifact
+        run: |
+          git -C /tmp/lba-api-artifacts config user.name github-actions
+          git -C /tmp/lba-api-artifacts config user.email github-actions@users.noreply.github.com
+          git -C /tmp/lba-api-artifacts add "artifacts/api-$GITHUB_SHA"
+          git -C /tmp/lba-api-artifacts commit -m "Build LBA API artifact $GITHUB_SHA"
+          git -C /tmp/lba-api-artifacts push origin HEAD:refs/heads/cloudflare-probe-artifacts
