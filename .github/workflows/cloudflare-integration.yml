@@ -1,0 +1,77 @@
+name: Cloudflare API integration
+on:
+  push:
+    branches: [cloudflare-free]
+    paths: ['.github/workflows/cloudflare-integration.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Test the live Worker with isolated synthetic accounts
+        run: |
+          python3 - <<'PY'
+          import json,os,secrets,time,urllib.error,urllib.request,uuid
+          base="https://lba-api-integration.lba-phurinut.workers.dev"
+          origin="https://phurinutprotron-droid.github.io"
+          def call(path,method="GET",data=None,token=None,expected=200,custom_origin=origin):
+              correlation=str(uuid.uuid4());started=time.monotonic()
+              headers={"Content-Type":"application/json","Origin":custom_origin,"X-Request-ID":correlation}
+              if token: headers["Authorization"]="Bearer "+token
+              req=urllib.request.Request(base+path,data=json.dumps(data).encode() if data is not None else None,headers=headers,method=method)
+              try: response=urllib.request.urlopen(req,timeout=25)
+              except urllib.error.HTTPError as exc: response=exc
+              status=response.status;raw=response.read(500000);response_headers=response.headers
+              print(json.dumps({"route":path.split("?")[0],"status":status,"duration_ms":round((time.monotonic()-started)*1000),"request_id":response_headers.get("X-Request-ID"),"correlation_id":correlation,"cf_ray":response_headers.get("CF-Ray")}),flush=True)
+              assert status==expected,f"{method} {path}: expected {expected}, received {status}"
+              if expected!=204 and status<400:
+                  assert response_headers.get("Access-Control-Allow-Origin")==custom_origin,"Allowed-origin CORS header missing"
+              return (json.loads(raw) if raw else None),response_headers
+          health,_=call("/health")
+          assert health["status"]=="ok"
+          _,headers=call("/health",custom_origin="https://untrusted.example")
+          assert headers.get("Access-Control-Allow-Origin") is None
+          run=os.environ["GITHUB_RUN_ID"]+"_"+os.environ["GITHUB_RUN_ATTEMPT"]
+          records=[]
+          for label in ("a","b","teacher"):
+              password=secrets.token_urlsafe(24);handle="cf_"+label+"_"+run
+              record,_=call("/api/auth/register","POST",{"handle":handle,"password":password,"grade":7},expected=201)
+              records.append((handle,password,record))
+          a,b,c=records
+          token=a[2]["access_token"];other=b[2]["user"]["student_id"];own=a[2]["user"]["student_id"]
+          call("/api/auth/login/teacher","POST",{"handle":a[0],"password":a[1]},expected=403)
+          call("/api/auth/login/student","POST",{"handle":a[0],"password":"incorrect-synthetic-password"},expected=401)
+          call("/api/auth/me",token=token)
+          call("/api/students/"+own,token=token)
+          call("/api/students/"+other,token=token,expected=403)
+          call("/api/students",token=token,expected=403)
+          subjects,_=call("/api/subjects",token=token)
+          assert len(subjects)>0
+          graph,_=call("/api/graph",token=token)
+          assert graph["nodes"] and graph["edges"]
+          call("/api/students/"+own+"/consent","POST",{"granted":True},token=token)
+          assessment,_=call("/api/students/"+own+"/assessments","POST",{"subject_id":subjects[0]["id"],"stage":"pre"},token=token,expected=201)
+          call("/api/assessments/"+assessment["id"],token=b[2]["access_token"],expected=403)
+          print("Awaiting teacher provisioning for "+c[0],flush=True)
+          teacher=None
+          for attempt in range(60):
+              data=json.dumps({"handle":c[0],"password":c[1]}).encode()
+              req=urllib.request.Request(base+"/api/auth/login/teacher",data=data,headers={"Content-Type":"application/json","Origin":origin},method="POST")
+              try:
+                  with urllib.request.urlopen(req,timeout=25) as response: teacher=json.load(response)
+                  break
+              except urllib.error.HTTPError as exc:
+                  assert exc.code==403,"Teacher provisioning check failed"
+              time.sleep(3)
+          assert teacher is not None,"Teacher provisioning is pending"
+          assert teacher["user"]["role"]=="teacher"
+          call("/api/auth/login/student","POST",{"handle":c[0],"password":c[1]},expected=403)
+          call("/api/students",token=teacher["access_token"])
+          call("/api/curriculum/status",token=teacher["access_token"])
+          call("/api/auth/logout","POST",token=token,expected=204)
+          call("/api/auth/me",token=token,expected=401)
+          print("Live isolated registration, password checks, roles, ownership, assessment, logout and CORS passed",flush=True)
+          PY
