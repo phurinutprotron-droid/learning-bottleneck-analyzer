@@ -19,6 +19,17 @@ class Settings(BaseSettings):
     consent_version: str = 'pilot-v1'
     rate_limit_per_minute: int = 120
 
+    @model_validator(mode='before')
+    @classmethod
+    def normalize_database_url(cls, values):
+        values = dict(values)
+        url = values.get('database_url', '')
+        for prefix in ('postgres://', 'postgresql://'):
+            if url.startswith(prefix):
+                values['database_url'] = 'postgresql+psycopg://' + url[len(prefix):]
+                break
+        return values
+
     @model_validator(mode='after')
     def validate_production(self):
         if self.environment.casefold() != 'production':

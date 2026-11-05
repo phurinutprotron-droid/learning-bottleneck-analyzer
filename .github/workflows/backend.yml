@@ -1,0 +1,84 @@
+name: Backend PostgreSQL checks
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: lba
+          POSTGRES_USER: lba
+          POSTGRES_PASSWORD: ci-test-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lba -d lba"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgresql://lba:ci-test-only-password@localhost:5432/lba
+      ENVIRONMENT: production
+      CORS_ORIGINS: '["https://phurinutprotron-droid.github.io"]'
+      AI_PROVIDER: deterministic
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.lock
+      - name: Backend test suite
+        run: python -m pytest -q
+      - name: Start production entrypoint against clean PostgreSQL
+        env:
+          LBA_TEACHER_HANDLE: ci_teacher
+          LBA_TEACHER_PASSWORD: ci-test-only-password
+          PORT: '8000'
+        run: |
+          python -m app.deploy > /tmp/lba-backend.log 2>&1 &
+          echo "$!" > /tmp/lba-backend.pid
+          for attempt in $(seq 1 40); do
+            if curl --silent --fail http://127.0.0.1:8000/health; then exit 0; fi
+            if ! kill -0 "$(cat /tmp/lba-backend.pid)" 2>/dev/null; then
+              cat /tmp/lba-backend.log
+              exit 1
+            fi
+            sleep 2
+          done
+          cat /tmp/lba-backend.log
+          exit 1
+      - name: Verify health, teacher login and Pages CORS
+        run: |
+          python - <<'PY'
+          import httpx
+          with httpx.Client(base_url="http://127.0.0.1:8000") as client:
+              assert client.get("/health").status_code == 200
+              assert client.get("/api/students").status_code == 401
+              result = client.post("/api/auth/login/teacher", json={
+                  "handle": "ci_teacher", "password": "ci-test-only-password",
+              })
+              assert result.status_code == 200
+              headers = {"Authorization": "Bearer " + result.json()["access_token"]}
+              assert client.get("/api/students", headers=headers).status_code == 200
+              for origin, expected in [
+                  ("https://phurinutprotron-droid.github.io", 200),
+                  ("https://unapproved.example", 400),
+              ]:
+                  result = client.options("/api/auth/login/teacher", headers={
+                      "Origin": origin, "Access-Control-Request-Method": "POST",
+                  })
+                  assert result.status_code == expected
+              assert client.post("/api/auth/logout", headers=headers).status_code == 204
+          print("PostgreSQL migrations, HTTP health, teacher sign-in, authorization and CORS passed")
+          PY
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f /tmp/lba-backend.pid ]; then kill "$(cat /tmp/lba-backend.pid)" || true; fi

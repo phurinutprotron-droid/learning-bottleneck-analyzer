@@ -319,3 +319,28 @@ def test_qwen_drafts_require_teacher_official_source_and_cost_confirmation(clien
     assert client.post(path, headers=teacher, json={**body, 'allow_paid': False}).status_code == 422
     assert client.post(path, headers=teacher, json=body).json()['model'] == 'qwen/qwen3.6-27b'
     assert calls == [({k: v for k, v in body.items() if k not in ('count', 'allow_paid')}, 1)]
+
+
+
+def test_render_postgres_url_and_teacher_provisioning(db_factory, monkeypatch):
+    from app.core.config import Settings
+    from app.core.security import verify_password
+    from app.deploy import bootstrap_teacher
+    from app.models.entities import User
+
+    config = Settings(_env_file=None, environment='production', cors_origins=[],
+                      database_url='postgresql://lba:test@localhost/lba')
+    assert config.database_url == 'postgresql+psycopg://lba:test@localhost/lba'
+    monkeypatch.setenv('LBA_TEACHER_HANDLE', 'deployment_teacher')
+    monkeypatch.setenv('LBA_TEACHER_PASSWORD', 'test-only-password-123')
+    bootstrap_teacher(db_factory)
+    monkeypatch.setenv('LBA_TEACHER_PASSWORD', 'another-valid-password')
+    bootstrap_teacher(db_factory)
+    with db_factory() as db:
+        user = db.scalar(select(User).where(User.handle == 'deployment_teacher'))
+        assert user.role == 'teacher' and not user.is_demo
+        assert verify_password('test-only-password-123', user.password_hash)
+        assert not verify_password('another-valid-password', user.password_hash)
+    monkeypatch.setenv('LBA_TEACHER_HANDLE', 'researcher')
+    with pytest.raises(RuntimeError, match='conflicts'):
+        bootstrap_teacher(db_factory)
