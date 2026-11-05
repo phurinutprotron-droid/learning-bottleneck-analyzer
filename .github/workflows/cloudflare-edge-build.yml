@@ -1,0 +1,66 @@
+name: Build Cloudflare native API
+on:
+  push:
+    branches: [cloudflare-free]
+    paths: ['cloudflare/edge/**', 'backend/app/export_worker.py', '.github/workflows/cloudflare-edge-build.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  native-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      ENVIRONMENT: development
+      DATABASE_URL: sqlite://
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install reference exporter dependencies
+        run: pip install -r backend/requirements.lock
+      - name: Export approved content and synthetic parity fixtures
+        working-directory: backend
+        run: python -m app.export_worker --out ../cloudflare/edge/generated
+      - name: Install native Worker dependencies
+        working-directory: cloudflare/edge
+        run: npm install --no-fund
+      - name: Verify Python and native contracts
+        working-directory: cloudflare/edge
+        run: npm test
+      - name: Package native Worker with Wrangler
+        working-directory: cloudflare/edge
+        run: npm run build
+      - name: Prepare generated artifact branch
+        run: |
+          if git fetch origin cloudflare-probe-artifacts; then
+            git worktree add --detach /tmp/lba-edge-artifacts FETCH_HEAD
+          else
+            git worktree add --detach /tmp/lba-edge-artifacts HEAD
+          fi
+      - name: Package public code and reproducible dependency lock
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,os,pathlib,shutil
+          root=pathlib.Path("cloudflare/edge/dist")
+          files=[{"name":str(p.relative_to(root)),"base64":base64.b64encode(p.read_bytes()).decode(),"mime":"application/javascript+module" if p.suffix in (".js",".mjs") else "application/octet-stream"} for p in root.rglob("*") if p.is_file() and p.name!="README.md" and not p.name.endswith(".map")]
+          assert any(f["name"]=="index.js" for f in files),"Missing entrypoint"
+          target=pathlib.Path("/tmp/lba-edge-artifacts/artifacts")/("edge-"+os.environ["GITHUB_SHA"])
+          target.mkdir(parents=True)
+          artifact={"source_commit":os.environ["GITHUB_SHA"],"main_module":"index.js","files":files}
+          data=json.dumps(artifact).encode()
+          (target/"worker.json").write_bytes(data)
+          shutil.copy2("cloudflare/edge/package-lock.json",target/"package-lock.json")
+          print({"source_commit":os.environ["GITHUB_SHA"],"artifact_bytes":len(data),"modules":len(files),"sha256":hashlib.sha256(data).hexdigest()})
+          PY
+      - name: Publish generated artifact
+        run: |
+          git -C /tmp/lba-edge-artifacts config user.name github-actions
+          git -C /tmp/lba-edge-artifacts config user.email github-actions@users.noreply.github.com
+          git -C /tmp/lba-edge-artifacts add "artifacts/edge-$GITHUB_SHA"
+          git -C /tmp/lba-edge-artifacts commit -m "Build native LBA artifact $GITHUB_SHA"
+          git -C /tmp/lba-edge-artifacts push origin HEAD:refs/heads/cloudflare-probe-artifacts

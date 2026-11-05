@@ -1,0 +1,15 @@
+{
+  "name": "lba-edge-integration",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "placement": {"region": "aws:ap-southeast-1"},
+  "observability": {
+    "enabled": true,
+    "redact_query_string": true,
+    "logs": {"enabled": true, "invocation_logs": false},
+    "traces": {"enabled": true}
+  }
+}
+
