@@ -1,0 +1,46 @@
+name: Cloudflare production smoke
+on:
+  push:
+    branches: [cloudflare-free, main]
+    paths: ['.github/workflows/cloudflare-production-smoke.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  production-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify HTTPS, CORS and production database credentials
+        run: |
+          python3 - <<'PY'
+          import json,os,secrets,urllib.error,urllib.request
+          base="https://lba-api.lba-phurinut.workers.dev"
+          origin="https://phurinutprotron-droid.github.io"
+          def call(path,method="GET",body=None,token=None,expected=200,allowed=True):
+              headers={"Origin":origin if allowed else "https://untrusted.example","User-Agent":"LBA-deployment-check/1.0"}
+              if body is not None: headers["Content-Type"]="application/json"
+              if token: headers["Authorization"]="Bearer "+token
+              req=urllib.request.Request(base+path,data=json.dumps(body).encode() if body is not None else None,headers=headers,method=method)
+              try: response=urllib.request.urlopen(req,timeout=25)
+              except urllib.error.HTTPError as error: response=error
+              data=response.read()
+              assert response.status==expected,f"{path}: expected {expected}, got {response.status}"
+              assert response.headers.get("Access-Control-Allow-Origin")== (origin if allowed else None)
+              assert response.headers.get("X-Request-ID")
+              print(method,path,response.status,flush=True)
+              return json.loads(data) if data else None
+          assert call("/health")["status"]=="ok"
+          call("/health",allowed=False)
+          suffix=os.environ["GITHUB_RUN_ID"]+"_"+os.environ["GITHUB_RUN_ATTEMPT"]
+          handle="qa_http_"+suffix;password=secrets.token_urlsafe(24)
+          session=call("/api/auth/register","POST",{"handle":handle,"password":password,"grade":7},expected=201)
+          token=session["access_token"];sid=session["user"]["student_id"]
+          assert call("/api/auth/me",token=token)["role"]=="student"
+          assert call("/api/students/"+sid,token=token)["assessments"]==[]
+          assert call("/api/subjects",token=token)
+          call("/api/auth/login/teacher","POST",{"handle":handle,"password":password},expected=403)
+          call("/api/auth/logout","POST",token=token,expected=204)
+          call("/api/auth/me",token=token,expected=401)
+          print("Production HTTPS, exact CORS, registration, ownership, portal separation and logout passed; synthetic handle "+handle,flush=True)
+          PY
