@@ -2,14 +2,6 @@
 name = "lba-cloudflare-api"
 version = "0.1.0"
 requires-python = ">=3.13"
-dependencies = [
-    "fastapi==0.162.0",
-    "pydantic-settings==2.9.1",
-    "SQLAlchemy==2.0.40",
-    "pg8000==1.31.5",
-    "httpx==0.28.1",
-]
-
+dependencies = ["fastapi==0.162.0", "pydantic-settings==2.9.1", "SQLAlchemy==2.0.52", "pg8000==1.31.5", "httpx==0.28.1"]
 [dependency-groups]
 dev = ["workers-py", "workers-runtime-sdk"]
-

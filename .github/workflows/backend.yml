@@ -40,8 +40,16 @@ jobs:
         run: |
           mkdir -p ../.cache
           python -m pytest -q
+      - name: Verify Worker SQLAlchemy version against the same suite
+        env:
+          ENVIRONMENT: development
+        run: |
+          pip install SQLAlchemy==2.0.52
+          python -m pytest -q
       - name: Start production entrypoint against clean PostgreSQL
         env:
+          PASSWORD_HASH_BACKEND: postgres_bcrypt
+          PASSWORD_PEPPER: synthetic-ci-only-pepper-not-a-real-secret
           LBA_TEACHER_HANDLE: ci_teacher
           LBA_TEACHER_PASSWORD: ci-test-only-password
           PORT: '8000'
