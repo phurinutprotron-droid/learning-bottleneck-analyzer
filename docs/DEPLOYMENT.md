@@ -1,5 +1,7 @@
 # Deploy LBA
 
+The public deployment uses the [Cloudflare Free guide](CLOUDFLARE_FREE.md). It documents the native Worker, existing PostgreSQL schema, private secrets, current checks and recovery procedure. The Python-server instructions below remain available for the reference server architecture.
+
 The Compose stack runs PostgreSQL 17, the FastAPI backend, and the React build served by Nginx. The browser uses the same origin for the SPA and API. Place an HTTPS reverse proxy in front of the frontend listener at 127.0.0.1:8080. Keep both published Compose listeners on loopback and keep PostgreSQL on the private Compose network.
 
 1. Copy .env.production.example to .env.production. Generate a strong hexadecimal POSTGRES_PASSWORD so it can be inserted into the database URL without escaping. Keep this file private and out of source control.

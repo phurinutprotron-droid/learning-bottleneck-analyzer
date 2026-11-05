@@ -1,5 +1,9 @@
 # Learning Bottleneck Analyzer (LBA)
 
+Online trial: https://phurinutprotron-droid.github.io/learning-bottleneck-analyzer/
+
+The online API uses Cloudflare Workers and Neon PostgreSQL. Student registration is available; teacher credentials are provisioned privately. Demo accounts are disabled online. See [Cloudflare deployment and verification](docs/CLOUDFLARE_FREE.md) and [current build status](BUILD_STATUS.md). Content remains an unvalidated software/research MVP.
+
 An integrated research MVP that connects original assessment responses to transparent evidence, competing hypotheses, curated verification, teacher-reviewed activities, and descriptive follow-up outcomes.
 
 **Unvalidated sample content.** The mathematics and science packs are software demonstrations, not validated diagnostics. No participants, expert approvals, accuracy results, or causal effects are fabricated. Accounts are empty unless the opt-in demo script is run; that script seeds no answers or results. Use fictional answers until pilot safeguards and content review are completed.

@@ -1,8 +1,8 @@
 name: Build Cloudflare native API
 on:
   push:
-    branches: [cloudflare-free]
-    paths: ['cloudflare/edge/**', 'backend/app/export_worker.py', '.github/workflows/cloudflare-edge-build.yml']
+    branches: [cloudflare-free, main]
+    paths: ['cloudflare/edge/**', 'backend/app/**', '.github/workflows/cloudflare-edge-build.yml']
   workflow_dispatch:
 permissions:
   contents: write

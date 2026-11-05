@@ -1,12 +1,23 @@
 # LBA build status
 
 ## Current phase
-Integrated research MVP implemented following the dependency order in the 21-day plan. This is a software build, not 21 calendar days of research validation. Workspace permissions are now working. Local frontend and backend are running.
+The research MVP follows the dependency order of the original 21-day plan. Cloudflare/Neon deployment has passed live API integration and production HTTPS/auth/CORS checks. The online variant preserves the Python implementation as the reference and uses a native Worker for hosting. Frontend publication and an actual browser check are the final deployment checks. This is software validation, not 21 calendar days of research validation.
+
+## Latest Cloudflare verification — 2026-11-05
+
+- Backend: **61 tests passed** against PostgreSQL 17, including the original SDK/server path and database password support.
+- Native Worker: **14 tests passed**, comparing 168 grading cases, 36 diagnostic patterns, 48 seeded exam cases and 12 research-statistics cases with Python, plus validation, HMAC, pricing/auto-routing and AI failure handling.
+- Live native flow passed in [run 42035637987, attempt 2](https://github.com/phurinutprotron-droid/learning-bottleneck-analyzer/actions/runs/42035637987).
+- Production HTTPS, authentication, exact CORS, ownership, portal separation and logout passed in [run 42042275837](https://github.com/phurinutprotron-droid/learning-bottleneck-analyzer/actions/runs/42042275837).
+- Production database revision is 0004. lba_runtime has no superuser/role-creation/database-creation/RLS-bypass privileges. Demo accounts cannot authenticate and are excluded from the online roster/default research summary.
+- The prelaunch recovery branch was read and written in isolation; production was unchanged. This does not establish a tested production point-in-time failover or an automatic backup schedule.
+- Successful live Gemini generation, sustained classroom load, native CPU behavior under quota exhaustion, independent content review and research validation remain open.
+- [Cloudflare deployment, commands, monitoring and recovery procedures](docs/CLOUDFLARE_FREE.md).
 
 ## Prioritized tasks
 - [x] Inspect workspace (empty) and verify write access.
 - [x] Record architecture, rules, and development plan.
-- [x] Database models, three migrations, authentication, ownership and consent.
+- [x] Database models, four migrations, authentication, ownership and consent.
 - [x] Versioned mathematics/science subject packs and assessment flow.
 - [x] Deterministic evidence and competing diagnostic hypotheses.
 - [x] Provenance-bearing knowledge graph, cross-subject view, heuristic priority and verification.
@@ -16,11 +27,12 @@ Integrated research MVP implemented following the dependency order in the 21-day
 - [x] Supplied UI UX Pro Max skill installed project-locally; readability, responsive layout and form feedback improvements applied.
 - [x] Demonstration logins, explicit database demo flag and default exclusion of demo records from research/exports.
 - [x] Automated checks, Docker configuration, setup/test scripts, API and research documentation.
-- [ ] Docker/PostgreSQL execution (Docker unavailable on this machine).
+- [x] PostgreSQL 17 migrations, scoped runtime grants, production HTTP/auth/CORS and native Cloudflare learning workflows.
+- [ ] Docker Compose execution (optional Python hosting path; not exercised for the Cloudflare deployment).
 - [ ] Successful live Gemini generation (model metadata accessible; generation returned 503 and timed out).
 - [ ] Content review, privacy/ethics preparation and independent real-world pilot.
 
-## Executed verification
+## Historical local verification
 - Latest QA pass: 33 backend tests, 7 frontend tests, Alembic drift check and production build passed. Live student, teacher and researcher demo login, authorized access and logout passed.
 - New diagnostic runs use rules-v2, which fixes reasoning-gap detection for mixed correct and incorrect responses. Scoring now rejects non-finite weights. Existing diagnostic snapshots were retained.
 - Live Gemini MCP: tool discovery and invocation passed, Google model lookup returned HTTP 200, generation returned HTTP 503, and the labeled fallback was returned.
