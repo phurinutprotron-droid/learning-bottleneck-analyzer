@@ -35,6 +35,8 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.lock
       - name: Backend test suite
+        env:
+          ENVIRONMENT: development
         run: |
           mkdir -p ../.cache
           python -m pytest -q
