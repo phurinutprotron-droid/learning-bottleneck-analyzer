@@ -46,7 +46,7 @@ export async function researchRoutes(ctx) {
     return {status: 200, raw: csv, headers: {'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename=lba-aggregate-report.csv'}};
   }
   if (ctx.path === '/api/research/evaluate' && ctx.request.method === 'POST') {
-    const input = validate(ctx.content.schemas.EvaluationInput, await readBody(ctx.request));
+    const input = validate(ctx.content.schemas.EvaluationInput, await readBody(ctx.request, 1048576));
     input.sus_responses ||= [];
     if (input.reference_labels.length !== input.predicted_labels.length ||
         [...input.reference_labels, ...input.predicted_labels].some(label => [...label].length > 80) ||

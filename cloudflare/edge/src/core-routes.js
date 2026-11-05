@@ -1,5 +1,5 @@
 import {HTTPError, uid, fail, PASSWORD_PREFIX, DUMMY_HASH, BCRYPT, prehash, digest, validate, readBody,
-  staff, currentUser, student, assessment, consent, audit, identity, issueSession, packFor, responsesFor,
+  staff, currentUser, student, assessment, consent, audit, identity, issueSession, newToken, packFor, responsesFor,
   assessmentView} from './kernel.js';
 import {grade, traverse} from './algorithms.js';
 
@@ -17,29 +17,20 @@ export async function coreRoutes(ctx) {
   if (path === '/api/auth/register' && method === 'POST') {
     ctx.route = '/api/auth/register';
     const input = await body(ctx, 'Registration');
-    if ((await ctx.q('SELECT id FROM users WHERE handle=$1', [input.handle])).length) fail(409, 'Handle unavailable');
     const prepared = await prehash(input.password, ctx.env.PASSWORD_PEPPER);
-    const hashed = (await ctx.q("SELECT crypt($1,gen_salt('bf',12)) AS hash", [prepared]))[0].hash;
-    if (!BCRYPT.test(hashed)) fail(503, 'Password hashing unavailable');
-    const user = {id: uid(), handle: input.handle, role: 'student', is_demo: false};
-    await ctx.q('INSERT INTO users(id,handle,password_hash,role,is_demo,created_at) VALUES($1,$2,$3,$4,false,CURRENT_TIMESTAMP)',
-      [user.id, user.handle, PASSWORD_PREFIX + hashed, user.role]);
-    await ctx.q('INSERT INTO students(id,user_id,anonymous_id,grade) VALUES($1,$2,$3,$4)',
-      [uid(), user.id, 'L-' + uid().replaceAll('-', '').slice(0, 10), input.grade]);
-    await audit(ctx, user, 'account.registered');
-    return ok(await issueSession(ctx, user), 201);
+    const token = newToken();
+    const user = (await ctx.q("WITH u AS (INSERT INTO users(id,handle,password_hash,role,is_demo,created_at) VALUES($1,$2,$9 || crypt($3,gen_salt('bf',12)),'student',false,CURRENT_TIMESTAMP) RETURNING id,handle,role,is_demo), s AS (INSERT INTO students(id,user_id,anonymous_id,grade) SELECT $4,id,$5,$6 FROM u RETURNING id,user_id,anonymous_id), new_session AS (INSERT INTO sessions(token_hash,user_id,expires_at) SELECT $7,id,CURRENT_TIMESTAMP+INTERVAL '8 hours' FROM u), new_audit AS (INSERT INTO audit_logs(id,actor_id,action,created_at) SELECT $8,id,'account.registered',CURRENT_TIMESTAMP FROM u) SELECT u.*,s.id AS student_id,s.anonymous_id FROM u JOIN s ON s.user_id=u.id",
+      [uid(), input.handle, prepared, uid(), 'L-' + uid().replaceAll('-', '').slice(0, 10), input.grade, await digest(token), uid(), PASSWORD_PREFIX]))[0];
+    return ok({access_token: token, token_type: 'bearer', user}, 201);
   }
   if ((match = /^\/api\/auth\/login(?:\/(student|teacher|researcher))?$/.exec(path)) && method === 'POST') {
     ctx.route = '/api/auth/login/:portal';
     const input = await body(ctx, 'Credentials');
-    const user = (await ctx.q('SELECT * FROM users WHERE handle=$1', [input.handle]))[0];
-    const stored = user?.password_hash?.startsWith(PASSWORD_PREFIX) ? user.password_hash.slice(PASSWORD_PREFIX.length) : DUMMY_HASH;
-    const safeHash = BCRYPT.test(stored) ? stored : DUMMY_HASH;
     const prepared = await prehash(input.password, ctx.env.PASSWORD_PEPPER);
-    const valid = (await ctx.q('SELECT crypt($1,$2)=$2 AS valid', [prepared, safeHash]))[0].valid;
-    if (!user || !user.password_hash.startsWith(PASSWORD_PREFIX) || !valid || user.is_demo) fail(401, 'Invalid handle or password');
+    const user = (await ctx.q("WITH candidate AS (SELECT u.*,s.id AS student_id,s.anonymous_id FROM users u LEFT JOIN students s ON s.user_id=u.id WHERE u.handle=$1), checked AS (SELECT crypt($2,COALESCE((SELECT substr(password_hash,char_length($3)+1) FROM candidate WHERE left(password_hash,char_length($3))=$3),$4)) AS digest) SELECT c.*,checked.digest=substr(c.password_hash,char_length($3)+1) AS valid FROM checked LEFT JOIN candidate c ON true",
+      [input.handle, prepared, PASSWORD_PREFIX, DUMMY_HASH]))[0];
+    if (!user?.id || !user.password_hash.startsWith(PASSWORD_PREFIX) || !user.valid || user.is_demo) fail(401, 'Invalid handle or password');
     if (match[1] && user.role !== match[1]) fail(403, `Use the ${user.role} sign-in for this account`);
-    await audit(ctx, user, 'session.created');
     return ok(await issueSession(ctx, user));
   }
   if (!path.startsWith('/api/')) return null;

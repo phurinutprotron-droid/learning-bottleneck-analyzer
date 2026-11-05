@@ -115,7 +115,7 @@ export async function learningRoutes(ctx) {
     if (!record) fail(404, 'Intervention not found');
     await student(ctx, record.student_id, user);
     if (record.status !== 'assigned') fail(409, 'Completed or cancelled history is immutable; create a new intervention');
-    await ctx.q("UPDATE interventions SET status=$1,review_note=$2,completed_at=CASE WHEN $1='completed' THEN CURRENT_TIMESTAMP ELSE NULL END WHERE id=$3", [input.status, input.review_note, record.id]);
+    await ctx.q("UPDATE interventions SET status=$1,review_note=$2,completed_at=CASE WHEN $4::boolean THEN CURRENT_TIMESTAMP ELSE NULL END WHERE id=$3", [input.status, input.review_note, record.id, input.status === 'completed']);
     await audit(ctx, user, 'intervention.' + input.status); return {status: 200, data: {id: record.id, status: input.status}};
   }
   return null;

@@ -14,7 +14,7 @@ export default {
     let allowedOrigins;
     try {
       allowedOrigins = JSON.parse(env.CORS_ORIGINS);
-      if (!Array.isArray(allowedOrigins) || !allowedOrigins.length || allowedOrigins.some(x => new URL(x).origin !== x || !x.startsWith('https://'))) throw new Error('Invalid origins');
+      if (!Array.isArray(allowedOrigins) || !allowedOrigins.length || allowedOrigins.some(x => typeof x !== 'string' || x.includes('*') || new URL(x).origin !== x || !x.startsWith('https://'))) throw new Error('Invalid origins');
     } catch { return Response.json({detail: 'Server configuration unavailable'}, {status: 503, headers}); }
     const origin = request.headers.get('Origin');
     if (allowedOrigins.includes(origin)) {
@@ -44,11 +44,12 @@ export default {
         query_timeout: 10000, application_name: 'lba-edge'});
       await client.connect();
       ctx.q = async (text, values = []) => (await client.query(text, values)).rows;
-      await ctx.q('BEGIN'); inTransaction = true;
-      await ctx.q("SET LOCAL statement_timeout='8000ms'");
+      if (request.method !== 'GET') {
+        await client.query("BEGIN; SET LOCAL statement_timeout='8000ms'"); inTransaction = true;
+      }
       result = await coreRoutes(ctx) || await learningRoutes(ctx) || await researchRoutes(ctx) || await aiRoutes(ctx);
       if (!result) throw new HTTPError(404, 'Not found');
-      await ctx.q('COMMIT'); inTransaction = false;
+      if (inTransaction) { await ctx.q('COMMIT'); inTransaction = false; }
       status = result.status;
     } catch (error) {
       if (inTransaction) { try { await client.query('ROLLBACK'); } catch { /* no student data or SQL in logs */ } }

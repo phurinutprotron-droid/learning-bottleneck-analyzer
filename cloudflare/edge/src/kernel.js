@@ -93,7 +93,7 @@ export const researcher = user => { if (!['teacher', 'researcher'].includes(user
 export async function currentUser(ctx) {
   const match = /^Bearer ([A-Za-z0-9_-]+)$/i.exec(ctx.request.headers.get('Authorization') || '');
   if (!match) fail(401, 'Authentication required');
-  const rows = await ctx.q('SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at > CURRENT_TIMESTAMP', [await digest(match[1])]);
+  const rows = await ctx.q('SELECT u.id,u.handle,u.role,u.is_demo,st.id AS student_id,st.anonymous_id FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN students st ON st.user_id=u.id WHERE s.token_hash=$1 AND s.expires_at > CURRENT_TIMESTAMP', [await digest(match[1])]);
   if (!rows[0] || rows[0].is_demo) fail(401, 'Session invalid or expired');
   ctx.sessionToken = match[1];
   return rows[0];
@@ -120,13 +120,13 @@ export async function audit(ctx, user, action) {
   await ctx.q('INSERT INTO audit_logs(id,actor_id,action,created_at) VALUES($1,$2,$3,CURRENT_TIMESTAMP)', [uid(), user.id, action]);
 }
 export async function identity(ctx, user) {
-  const row = (await ctx.q('SELECT * FROM students WHERE user_id=$1', [user.id]))[0];
+  const row = Object.hasOwn(user, 'student_id') ? {id: user.student_id, anonymous_id: user.anonymous_id} : (await ctx.q('SELECT * FROM students WHERE user_id=$1', [user.id]))[0];
   return {id: user.id, handle: user.handle, role: user.role, is_demo: user.is_demo,
     student_id: row?.id ?? null, anonymous_id: row?.anonymous_id ?? null};
 }
-export async function issueSession(ctx, user) {
+export async function issueSession(ctx, user, action = 'session.created') {
   const token = newToken();
-  await ctx.q("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,CURRENT_TIMESTAMP + INTERVAL '8 hours')", [await digest(token), user.id]);
+  await ctx.q("WITH new_session AS (INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,CURRENT_TIMESTAMP + INTERVAL '8 hours')) INSERT INTO audit_logs(id,actor_id,action,created_at) VALUES($3,$2,$4,CURRENT_TIMESTAMP)", [await digest(token), user.id, uid(), action]);
   return {access_token: token, token_type: 'bearer', user: await identity(ctx, user)};
 }
 export async function packFor(ctx, record) {

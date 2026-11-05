@@ -28,7 +28,7 @@ jobs:
         run: python -m app.export_worker --out ../cloudflare/edge/generated
       - name: Install native Worker dependencies
         working-directory: cloudflare/edge
-        run: npm install --no-fund
+        run: npm ci --no-fund
       - name: Verify Python and native contracts
         working-directory: cloudflare/edge
         run: npm test

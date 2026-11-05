@@ -16,3 +16,11 @@ coverage/
 playwright-report/
 test-results/
 *.dump
+
+# Generated Worker dependencies and content; never commit local bindings
+cloudflare/**/python_modules/
+cloudflare/**/.venv-workers/
+cloudflare/edge/generated/
+cloudflare/api/app/
+cloudflare/api/curriculum_archive/
+.dev.vars*

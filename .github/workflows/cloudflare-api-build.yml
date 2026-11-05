@@ -1,8 +1,5 @@
 name: Build Cloudflare LBA API
 on:
-  push:
-    branches: [cloudflare-free]
-    paths: ['backend/**', 'cloudflare/api/**', '.github/workflows/cloudflare-api-build.yml']
   workflow_dispatch:
 permissions:
   contents: write
