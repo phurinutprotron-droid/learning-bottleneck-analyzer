@@ -1,7 +1,7 @@
 name: Backend PostgreSQL checks
 on:
   push:
-    branches: [main]
+    branches: [main, cloudflare-free]
   workflow_dispatch:
 permissions:
   contents: read

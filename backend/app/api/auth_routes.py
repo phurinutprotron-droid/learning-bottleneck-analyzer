@@ -4,7 +4,7 @@ from sqlalchemy import select, delete
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.config import get_settings
-from app.core.security import current_user, bearer, issue_session, hash_password, verify_password, token_hash
+from app.core.security import current_user, bearer, issue_session, hash_password, verify_password, token_hash, dummy_password_hash
 from app.models.entities import User, Student, SessionToken
 from app.schemas.contracts import Credentials, Registration
 from app.repositories.records import audit
@@ -22,7 +22,7 @@ def identity(db, user):
 def register(body: Registration, db: Session = Depends(get_db)):
     if db.scalar(select(User).where(User.handle == body.handle)):
         raise HTTPException(409, 'Handle unavailable')
-    user = User(handle=body.handle, password_hash=hash_password(body.password), role='student')
+    user = User(handle=body.handle, password_hash=hash_password(body.password, db), role='student')
     db.add(user)
     db.flush()
     db.add(Student(user_id=user.id, grade=body.grade))
@@ -45,7 +45,7 @@ def portal_login(portal: Literal['student', 'teacher', 'researcher'], body: Cred
 def authenticate(body: Credentials, db: Session, portal: str | None = None):
     user = db.scalar(select(User).where(User.handle == body.handle))
     # Equal-cost hash on an unknown user to reduce handle enumeration by timing.
-    valid = verify_password(body.password, user.password_hash) if user else verify_password(body.password, hash_password('unavailable-account'))
+    valid = verify_password(body.password, user.password_hash if user else dummy_password_hash(), db)
     if not user or not valid or (user.is_demo and get_settings().environment.casefold() == 'production'):
         raise HTTPException(401, 'Invalid handle or password')
     if portal and user.role != portal:
@@ -64,3 +64,4 @@ def logout(user: User = Depends(current_user), credentials=Depends(bearer), db: 
     db.execute(delete(SessionToken).where(SessionToken.token_hash == token_hash(credentials.credentials)))
     audit(db, user, 'session.revoked')
     return HTTPResponse(status_code=204)
+

@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 from urllib.parse import urlsplit
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,6 +19,15 @@ class Settings(BaseSettings):
     session_hours: int = 8
     consent_version: str = 'pilot-v1'
     rate_limit_per_minute: int = 120
+    password_hash_backend: Literal['scrypt', 'postgres_bcrypt'] = 'scrypt'
+    password_pepper: str = ''
+
+    @model_validator(mode='after')
+    def validate_password_backend(self):
+        if self.password_hash_backend == 'postgres_bcrypt':
+            if not self.database_url.startswith('postgresql+') or len(self.password_pepper) < 32:
+                raise ValueError('Database password hashing requires PostgreSQL and a private pepper of at least 32 characters')
+        return self
 
     @model_validator(mode='before')
     @classmethod
@@ -48,3 +58,4 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
