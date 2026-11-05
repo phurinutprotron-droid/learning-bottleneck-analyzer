@@ -1,0 +1,36 @@
+name: Live Pages browser smoke
+on:
+  push:
+    branches: [main]
+    paths: ['qa/browser-smoke.mjs', '.github/workflows/browser-smoke.yml']
+  workflow_run:
+    workflows: ['Deploy LBA to GitHub Pages']
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned browser tooling
+        run: |
+          npm install --prefix /tmp/lba-browser --no-audit --no-fund playwright@1.64.1
+          /tmp/lba-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify the actual published frontend and backend
+        env:
+          PLAYWRIGHT_PACKAGE_ROOT: /tmp/lba-browser
+        run: node qa/browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: synthetic-browser-screenshots
+          path: browser-artifacts
+          if-no-files-found: ignore
+          retention-days: 7

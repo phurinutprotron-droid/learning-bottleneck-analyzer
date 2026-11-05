@@ -42,5 +42,8 @@ jobs:
           call("/api/auth/login/teacher","POST",{"handle":handle,"password":password},expected=403)
           call("/api/auth/logout","POST",token=token,expected=204)
           call("/api/auth/me",token=token,expected=401)
-          print("Production HTTPS, exact CORS, registration, ownership, portal separation and logout passed; synthetic handle "+handle,flush=True)
+          cleanup=call("/api/auth/login/student","POST",{"handle":handle,"password":password})
+          call("/api/students/"+sid,"DELETE",token=cleanup["access_token"],expected=204)
+          call("/api/auth/me",token=cleanup["access_token"],expected=401)
+          print("Production HTTPS, exact CORS, registration, ownership, portal separation, logout and self-erasure passed; synthetic handle "+handle,flush=True)
           PY

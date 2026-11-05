@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: native-artifact-${{ github.sha }}
+  cancel-in-progress: false
 jobs:
   native-api:
     runs-on: ubuntu-latest
@@ -50,10 +53,12 @@ jobs:
           files=[{"name":str(p.relative_to(root)),"base64":base64.b64encode(p.read_bytes()).decode(),"mime":"application/javascript+module" if p.suffix in (".js",".mjs") else "application/octet-stream"} for p in root.rglob("*") if p.is_file() and p.name!="README.md" and not p.name.endswith(".map")]
           assert any(f["name"]=="index.js" for f in files),"Missing entrypoint"
           target=pathlib.Path("/tmp/lba-edge-artifacts/artifacts")/("edge-"+os.environ["GITHUB_SHA"])
-          target.mkdir(parents=True)
+          target.mkdir(parents=True,exist_ok=True)
           artifact={"source_commit":os.environ["GITHUB_SHA"],"main_module":"index.js","files":files}
           data=json.dumps(artifact).encode()
-          (target/"worker.json").write_bytes(data)
+          existing=target/"worker.json"
+          if existing.exists(): assert existing.read_bytes()==data,"Immutable source artifact changed"
+          existing.write_bytes(data)
           shutil.copy2("cloudflare/edge/package-lock.json",target/"package-lock.json")
           print({"source_commit":os.environ["GITHUB_SHA"],"artifact_bytes":len(data),"modules":len(files),"sha256":hashlib.sha256(data).hexdigest()})
           PY
@@ -62,5 +67,14 @@ jobs:
           git -C /tmp/lba-edge-artifacts config user.name github-actions
           git -C /tmp/lba-edge-artifacts config user.email github-actions@users.noreply.github.com
           git -C /tmp/lba-edge-artifacts add "artifacts/edge-$GITHUB_SHA"
+          if git -C /tmp/lba-edge-artifacts diff --cached --quiet; then
+            echo "Verified artifact already exists"
+            exit 0
+          fi
           git -C /tmp/lba-edge-artifacts commit -m "Build native LBA artifact $GITHUB_SHA"
-          git -C /tmp/lba-edge-artifacts push origin HEAD:refs/heads/cloudflare-probe-artifacts
+          for attempt in 1 2 3; do
+            git -C /tmp/lba-edge-artifacts fetch origin cloudflare-probe-artifacts
+            git -C /tmp/lba-edge-artifacts rebase FETCH_HEAD
+            if git -C /tmp/lba-edge-artifacts push origin HEAD:refs/heads/cloudflare-probe-artifacts; then exit 0; fi
+          done
+          exit 1
