@@ -35,7 +35,9 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.lock
       - name: Backend test suite
-        run: python -m pytest -q
+        run: |
+          mkdir -p ../.cache
+          python -m pytest -q
       - name: Start production entrypoint against clean PostgreSQL
         env:
           LBA_TEACHER_HANDLE: ci_teacher
