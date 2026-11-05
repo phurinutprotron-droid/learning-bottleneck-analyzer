@@ -7,7 +7,7 @@ from workers import WorkerEntrypoint, Response
 class Default(WorkerEntrypoint):
     async def fetch(self, request):
         imports = {}
-        for name in ("fastapi", "pydantic_settings", "sqlalchemy", "psycopg", "httpx", "google.genai"):
+        for name in ("fastapi", "pydantic_settings", "sqlalchemy", "pg8000", "httpx", "google.genai"):
             try:
                 importlib.import_module(name)
                 imports[name] = "ok"
@@ -15,7 +15,8 @@ class Default(WorkerEntrypoint):
                 imports[name] = type(exc).__name__
         started = time.perf_counter()
         try:
-            digest = hashlib.scrypt(b"synthetic-password", salt=b"synthetic-salt", n=16384, r=8, p=1)
+            from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+            digest = Scrypt(salt=b"synthetic-salt", length=64, n=16384, r=8, p=1).derive(b"synthetic-password")
             password_check = len(digest) == 64
         except Exception as exc:
             password_check = type(exc).__name__
