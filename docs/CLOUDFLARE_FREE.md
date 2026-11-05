@@ -16,6 +16,9 @@ Cloudflare hosting and the Neon organization use the selected free services. No 
 - 14 native tests passed: 168 grading cases, 36 diagnostic/verification patterns, 48 seeded exam cases, 12 research-statistic cases, Unicode/rounding parity, HMAC parity, schema/size controls, free-model selection and AI 504/timeout handling.
 - Live native integration run 42035637987, attempt 2, passed registration, demo-account denial, teacher/student portals, ownership, answer immutability, baseline completion, diagnostics, verification, teacher interventions, follow-up, delayed retention rejection, aggregate research export, seeded exams and logout.
 - Production HTTPS/auth/CORS smoke run 42042275837 passed with a private random synthetic password. Its account was subsequently marked as demo.
+- Frontend tests (7), production build and GitHub Pages publication passed in run 42045112823. Actual browser run 42050347016 passed live registration, API connectivity/CORS, dashboard rendering and desktop/mobile layout. Screenshots contain synthetic data only.
+- Final production smoke run 42050347115 passed login, logout, portal/ownership checks and authenticated erasure of its own synthetic account; the browser check also erased its own account. The corresponding QA users were absent in a subsequent production database check.
+- Native artifact build run 42050347100 passed with repeatable publication. Public integration/prototype Worker routes are disabled.
 - Clean Neon migrations reached revision 0004. Runtime role lba_runtime has application read/write grants and no superuser, role-creation, database-creation or RLS-bypass capability.
 - A prelaunch recovery branch was read successfully at revision 0004; a write on that branch did not create a table in production.
 - Existing Google/OpenRouter keys are configured as Worker secrets. Successful live Gemini generation has NOT been established by these deployment tests.

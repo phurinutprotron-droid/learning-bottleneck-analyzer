@@ -1,7 +1,7 @@
 # LBA build status
 
 ## Current phase
-The research MVP follows the dependency order of the original 21-day plan. Cloudflare/Neon deployment has passed live API integration and production HTTPS/auth/CORS checks. The online variant preserves the Python implementation as the reference and uses a native Worker for hosting. Frontend publication and an actual browser check are the final deployment checks. This is software validation, not 21 calendar days of research validation.
+The research MVP follows the dependency order of the original 21-day plan. Cloudflare/Neon deployment has passed live API integration and production HTTPS/auth/CORS checks. The online variant preserves the Python implementation as the reference and uses a native Worker for hosting. The published GitHub Pages frontend has passed actual browser registration, CORS, dashboard rendering and mobile layout checks. This is software validation, not 21 calendar days of research validation.
 
 ## Latest Cloudflare verification — 2026-11-05
 
@@ -13,6 +13,11 @@ The research MVP follows the dependency order of the original 21-day plan. Cloud
 - The prelaunch recovery branch was read and written in isolation; production was unchanged. This does not establish a tested production point-in-time failover or an automatic backup schedule.
 - Successful live Gemini generation, sustained classroom load, native CPU behavior under quota exhaustion, independent content review and research validation remain open.
 - [Cloudflare deployment, commands, monitoring and recovery procedures](docs/CLOUDFLARE_FREE.md).
+
+- Frontend: **7 tests and the production build passed**, followed by successful Pages publication in run 42045112823.
+- Actual live-browser verification passed in [run 42050347016](https://github.com/phurinutprotron-droid/learning-bottleneck-analyzer/actions/runs/42050347016): registration, cross-origin API calls, rendered dashboard, desktop/mobile screenshots and no horizontal mobile overflow. Its own synthetic account was erased through the authenticated API.
+- Repeatable native build run 42050347100 and production smoke run 42050347115 passed. A database check confirmed no users remained for these two final synthetic checks.
+- Public routes for the experimental integration Workers are disabled; the production lba-api route remains enabled.
 
 ## Prioritized tasks
 - [x] Inspect workspace (empty) and verify write access.
