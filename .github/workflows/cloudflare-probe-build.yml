@@ -2,11 +2,7 @@ name: Build Cloudflare compatibility artifact
 on:
   push:
     branches: [cloudflare-free]
-    paths:
-      - 'cloudflare/probe.py'
-      - 'cloudflare/pyproject.toml'
-      - 'cloudflare/wrangler.jsonc'
-      - '.github/workflows/cloudflare-probe-build.yml'
+    paths: ['cloudflare/cpu-probe/**', '.github/workflows/cloudflare-probe-build.yml']
   workflow_dispatch:
 permissions:
   contents: write
@@ -14,35 +10,50 @@ jobs:
   build-probe:
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    env:
+      UV_PROJECT_ENVIRONMENT: /tmp/lba-build-venv
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
       - uses: astral-sh/setup-uv@v6
-      - name: Build with the official Python Workers packager
-        working-directory: cloudflare
-        run: uv run pywrangler deploy --dry-run --outdir build
-      - name: Package public probe source only
+      - name: Build synthetic CPU probe with the official packager
+        working-directory: cloudflare/cpu-probe
+        run: uv run pywrangler deploy --dry-run --outdir /tmp/lba-worker-build
+      - name: Prepare generated branch
+        run: |
+          if git fetch origin cloudflare-probe-artifacts; then
+            git worktree add --detach /tmp/lba-probe-artifacts FETCH_HEAD
+          else
+            git worktree add --detach /tmp/lba-probe-artifacts HEAD
+          fi
+      - name: Package public source only
         run: |
           python3 - <<'PY'
-          import base64, json, pathlib
-          root = pathlib.Path("cloudflare/build")
-          files = [{"name": str(p.relative_to(root)), "base64": base64.b64encode(p.read_bytes()).decode()} for p in root.rglob("*") if p.is_file() and p.name != "README.md"]
-          print([(f["name"], len(f["base64"])) for f in files])
-          pathlib.Path("/tmp/probe-artifact.json").write_text(json.dumps({"source_commit": __import__("os").environ["GITHUB_SHA"], "files": files}))
+          import base64, gzip, hashlib, json, os, pathlib
+          root=pathlib.Path("/tmp/lba-worker-build")
+          files=[{"name":str(p.relative_to(root)),"base64":base64.b64encode(p.read_bytes()).decode()} for p in root.rglob("*") if p.is_file() and p.name != "README.md"]
+          assert not any(".venv/" in f["name"] for f in files), "Virtualenv must not be bundled"
+          data=json.dumps({"source_commit":os.environ["GITHUB_SHA"],"files":files}).encode()
+          packed=base64.b64encode(gzip.compress(data,mtime=0)).decode()
+          target=pathlib.Path("/tmp/lba-probe-artifacts/artifacts")/os.environ["GITHUB_SHA"]
+          target.mkdir(parents=True)
+          chunks=[]
+          for i in range(0,len(packed),400000):
+              name=f"chunk-{i//400000:03}.txt"
+              (target/name).write_text(packed[i:i+400000])
+              chunks.append(name)
+          manifest={"source_commit":os.environ["GITHUB_SHA"],"encoding":"base64+gzip+json","sha256":hashlib.sha256(data).hexdigest(),"chunks":chunks,"modules":len(files),"json_bytes":len(data),"packed_bytes":len(packed)}
+          (target/"manifest.json").write_text(json.dumps(manifest))
+          print(manifest)
+          expected=hashlib.scrypt(b"synthetic-password",salt=b"synthetic-salt",n=16384,r=8,p=1).hex()
+          print("Expected synthetic digest:",expected)
           PY
-      - name: Publish source artifact on a separate generated branch
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Publish generated compatibility artifact
         run: |
-          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/cloudflare-probe-artifacts" >/tmp/probe-ref.json 2>/dev/null || gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref=refs/heads/cloudflare-probe-artifacts -f sha="$GITHUB_SHA" >/tmp/probe-ref.json
-          gh api "repos/$GITHUB_REPOSITORY/contents/probe-artifact.json?ref=cloudflare-probe-artifacts" >/tmp/probe-existing.json 2>/dev/null || echo '{}' >/tmp/probe-existing.json
-          python3 - <<'PY'
-          import base64, json, pathlib
-          old=json.loads(pathlib.Path("/tmp/probe-existing.json").read_text())
-          body={"branch":"cloudflare-probe-artifacts","message":"Build public compatibility probe artifact","content":base64.b64encode(pathlib.Path("/tmp/probe-artifact.json").read_bytes()).decode()}
-          if "sha" in old: body["sha"]=old["sha"]
-          pathlib.Path("/tmp/probe-publish.json").write_text(json.dumps(body))
-          PY
-          gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/probe-artifact.json" --input /tmp/probe-publish.json --jq '.commit.sha'
+          git -C /tmp/lba-probe-artifacts config user.name github-actions
+          git -C /tmp/lba-probe-artifacts config user.email github-actions@users.noreply.github.com
+          git -C /tmp/lba-probe-artifacts add "artifacts/$GITHUB_SHA"
+          git -C /tmp/lba-probe-artifacts commit -m "Build synthetic Worker probe $GITHUB_SHA"
+          git -C /tmp/lba-probe-artifacts push origin HEAD:refs/heads/cloudflare-probe-artifacts

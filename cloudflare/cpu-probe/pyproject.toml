@@ -1,0 +1,7 @@
+[project]
+name = "lba-cpu-probe"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = ["cryptography"]
+[dependency-groups]
+dev = ["workers-py", "workers-runtime-sdk"]
