@@ -2,6 +2,7 @@ name: Cloudflare Python compatibility
 on:
   push:
     branches: [cloudflare-free]
+    paths: ['cloudflare/probe.py', 'cloudflare/pyproject.toml', 'cloudflare/wrangler.jsonc', '.github/workflows/cloudflare-compatibility.yml']
   workflow_dispatch:
 permissions:
   contents: read

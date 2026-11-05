@@ -2,6 +2,7 @@ name: Backend PostgreSQL checks
 on:
   push:
     branches: [main, cloudflare-free]
+    paths: ['backend/**', '.github/workflows/backend.yml']
   workflow_dispatch:
 permissions:
   contents: read
