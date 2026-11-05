@@ -1,0 +1,48 @@
+name: Build Cloudflare compatibility artifact
+on:
+  push:
+    branches: [cloudflare-free]
+    paths:
+      - 'cloudflare/probe.py'
+      - 'cloudflare/pyproject.toml'
+      - 'cloudflare/wrangler.jsonc'
+      - '.github/workflows/cloudflare-probe-build.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: astral-sh/setup-uv@v6
+      - name: Build with the official Python Workers packager
+        working-directory: cloudflare
+        run: uv run pywrangler deploy --dry-run --outdir build
+      - name: Package public probe source only
+        run: |
+          python3 - <<'PY'
+          import base64, json, pathlib
+          root = pathlib.Path("cloudflare/build")
+          files = [{"name": str(p.relative_to(root)), "base64": base64.b64encode(p.read_bytes()).decode()} for p in root.rglob("*") if p.is_file() and p.name != "README.md"]
+          print([(f["name"], len(f["base64"])) for f in files])
+          pathlib.Path("/tmp/probe-artifact.json").write_text(json.dumps({"source_commit": __import__("os").environ["GITHUB_SHA"], "files": files}))
+          PY
+      - name: Publish source artifact on a separate generated branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/cloudflare-probe-artifacts" >/tmp/probe-ref.json 2>/dev/null || gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref=refs/heads/cloudflare-probe-artifacts -f sha="$GITHUB_SHA" >/tmp/probe-ref.json
+          gh api "repos/$GITHUB_REPOSITORY/contents/probe-artifact.json?ref=cloudflare-probe-artifacts" >/tmp/probe-existing.json 2>/dev/null || echo '{}' >/tmp/probe-existing.json
+          python3 - <<'PY'
+          import base64, json, pathlib
+          old=json.loads(pathlib.Path("/tmp/probe-existing.json").read_text())
+          body={"branch":"cloudflare-probe-artifacts","message":"Build public compatibility probe artifact","content":base64.b64encode(pathlib.Path("/tmp/probe-artifact.json").read_bytes()).decode()}
+          if "sha" in old: body["sha"]=old["sha"]
+          pathlib.Path("/tmp/probe-publish.json").write_text(json.dumps(body))
+          PY
+          gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/probe-artifact.json" --input /tmp/probe-publish.json --jq '.commit.sha'
