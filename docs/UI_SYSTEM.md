@@ -20,3 +20,9 @@ The graph refits on container resize and supports a smaller minimum zoom so all 
 Screenshots and local browser data use explicitly labelled synthetic fixtures. Browser review exercised local UI rendering. Safari/iOS and assistive-technology operation were not exercised. AI provider generation and backend capacity were outside this visual change.
 
 The production frontend continues to use the HTTPS backend origin configured in the existing Pages workflow. No API keys, database URLs, login credentials or student records are part of this release.
+
+## Published verification
+
+GitHub Pages deployment [42832405913](https://github.com/phurinutprotron-droid/learning-bottleneck-analyzer/actions/runs/42832405913) passed fresh dependency installation, all nine frontend tests, production build and public HTML/script/logo checks. The new shared CSS was independently fetched from the public site.
+
+Live browser [42832665301](https://github.com/phurinutprotron-droid/learning-bottleneck-analyzer/actions/runs/42832665301) passed actual student registration, subject/profile API calls, CORS, rendered Home and mobile overflow checks. Its synthetic account was erased through the authenticated API during cleanup. This live check covers the student entry flow, while staff and research screen coverage above comes from the local synthetic-fixture review.

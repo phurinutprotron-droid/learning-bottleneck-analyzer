@@ -5,7 +5,7 @@
 - The owner approved the learner Home style for all pages. Shared materials now cover all three sign-in portals, registration, student/teacher/research workspaces, assessment/evidence/AI controls, curriculum/exam drafting, graph and graph dialogs.
 - Nine frontend tests passed and the release source passed TypeScript and Vite build. Local synthetic-fixture Chromium checks passed 29 role/page states at 320/390/1440px, 87 captures, with no document overflow or runtime exceptions.
 - The graph refits on resize, including All subjects on a 320px phone. Mobile teacher destinations remain reachable through the horizontally scrollable labelled dock.
-- The release source is being published through the existing Pages workflow. Live deployment verification is pending. [Interface implementation and review scope](docs/UI_SYSTEM.md).
+- Published successfully in Pages run 42832405913. Live browser run 42832665301 passed registration, actual backend/CORS calls, Home rendering and mobile layout, then erased its synthetic account. [Interface implementation and review scope](docs/UI_SYSTEM.md).
 
 
 ## Current phase
