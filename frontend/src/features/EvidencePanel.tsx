@@ -3,6 +3,7 @@ import { Pending } from "../components/motion";
 import { GitBranch, Sparkles, ArrowRight } from "lucide-react";
 import type { Diagnostic, Recommendation, Assessment } from "../types";
 import { api, post } from "../services/api";
+import { isJudgeToken } from "../services/judgePreview";
 import { useResource } from "../hooks/useResource";
 import {
   ErrorNotice,
@@ -64,6 +65,7 @@ export function EvidencePanel({
   onVerify: () => Promise<void>;
   onChange: () => void;
 }) {
+  const readOnly = isJudgeToken(token);
   const [busy, setBusy] = useState(false);
   const [task, setTask] = useState<AdvisoryTask>("intervention_suggestions");
   const [family, setFamily] = useState<Family>("all");
@@ -145,7 +147,7 @@ export function EvidencePanel({
           <div className="eyebrow">FOLLOW THE EVIDENCE</div>
           <h2>Possible explanations, open to revision.</h2>
         </div>
-        <button className="primary" onClick={verify} disabled={busy}>
+        <button className="primary" onClick={verify} disabled={busy || readOnly}>
           <GitBranch size={17} />
           Next verification
         </button>
@@ -279,7 +281,7 @@ export function EvidencePanel({
         <>
           <SectionTitle
             aside={
-              <button className="secondary" disabled={busy || (!!modelId && (!model?.supports_advisory || model.price_class === "unknown" || (model.price_class === "paid" && !allowPaid)))} onClick={() => assist()}>
+              <button className="secondary" disabled={busy || readOnly || (!!modelId && (!model?.supports_advisory || model.price_class === "unknown" || (model.price_class === "paid" && !allowPaid)))} onClick={() => assist()}>
                 <Sparkles size={15} />
                 Advisory assistance
               </button>
@@ -335,7 +337,7 @@ export function EvidencePanel({
             )}
             <p className="muted">Model availability can vary. Advisory results require review and do not change the assessment score.</p>
           </fieldset>
-          <button className="secondary" disabled={busy} onClick={() => assist(true)}>Analyze learning gaps with Gemini</button>
+          <button className="secondary" disabled={busy || readOnly} onClick={() => assist(true)}>Analyze learning gaps with Gemini</button>
           {assisting && <Pending label="Requesting advisory assistance…" />}
           {ai && !assisting && (
             <div className="panel motion-feedback" role="status">
@@ -472,7 +474,7 @@ function InterventionForm({
           {message}
         </div>
       ) : (
-        <button className="primary" disabled={busy}>
+        <button className="primary" disabled={busy || isJudgeToken(token)}>
           {busy ? "Assigning…" : "Approve & assign"}
           <ArrowRight size={16} />
         </button>

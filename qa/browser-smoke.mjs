@@ -40,6 +40,34 @@ try {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Mobile page overflows horizontally');
   await page.screenshot({path: 'browser-artifacts/student-home-mobile-synthetic.png', fullPage: true});
   console.log('Live Pages browser registration, CORS, dashboard rendering and mobile layout passed');
+  const judgeRequests = [];
+  const trackJudgeRequests = request => {
+    if (request.url().startsWith(api + '/api/')) judgeRequests.push(request.url());
+  };
+  page.on('request', trackJudgeRequests);
+  try {
+    await page.goto(site + '?portal=judge&qa=' + suffix, {waitUntil: 'networkidle', timeout: 60000});
+    assert.equal(await page.locator('input[name="judge_handle"]').inputValue(), 'lba_judge');
+    assert.equal(await page.locator('input[name="judge_password"]').inputValue(), 'LBA-Judge-2026!');
+    await page.locator('.judge-login form button.primary').click();
+    await page.locator('.judge-banner').waitFor({state: 'visible'});
+    await page.locator('.learning-tree').waitFor({state: 'visible'});
+    await page.screenshot({path: 'browser-artifacts/judge-student-mobile-example.png', fullPage: true});
+    await page.locator('.judge-banner select').selectOption('teacher');
+    await page.locator('.learner-list button').first().waitFor({state: 'visible'});
+    await page.locator('.judge-banner select').selectOption('researcher');
+    await page.locator('.dataset-toggle').waitFor({state: 'visible'});
+    assert.equal(await page.locator('.page-header button').isDisabled(), true, 'Judge data exports must be disabled');
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Judge mobile page overflows');
+    assert.deepEqual(judgeRequests, [], 'Judge interface must not request real backend records');
+    assert.equal(errors.length, 0, 'Judge interface runtime error');
+    console.log('Live public judge link, prefilled credentials, all three views and zero backend record requests passed');
+  } finally {
+    page.off('request', trackJudgeRequests);
+  }
+  const publicTokenCheck = await context.request.get(api + '/api/auth/me', {headers: {Authorization: 'Bearer lba-public-preview-teacher'}});
+  assert.equal(publicTokenCheck.status(), 401, 'Public preview token must not authenticate against the real backend');
+  console.log('Real backend rejected the public preview token');
 } finally {
   try {
     const cleanup = await page.evaluate(async ({api, session, handle, password}) => {

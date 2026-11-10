@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { useResource } from "../hooks/useResource";
 import { exportReport, api, post } from "../services/api";
+import { isJudgeToken } from "../services/judgePreview";
 import type { Research } from "../types";
 import {
   PageHeader,
@@ -77,7 +78,7 @@ export function ResearchDashboard({
         title="Make the evidence visible."
         subtitle="Descriptive outcomes, transparent denominators, and questions still open."
         action={
-          <button className="secondary" onClick={download}>
+          <button className="secondary" onClick={download} disabled={isJudgeToken(token)}>
             <Download size={16} />
             Export aggregate report
           </button>
@@ -241,7 +242,7 @@ export function ResearchDashboard({
             <button
               className="secondary"
               onClick={evaluate}
-              disabled={!labels.trim()}
+              disabled={!labels.trim() || isJudgeToken(token)}
             >
               Calculate agreement
             </button>

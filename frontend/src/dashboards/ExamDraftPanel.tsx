@@ -3,6 +3,7 @@ import { ErrorNotice, Notice } from "../components/ui";
 import { Pending } from "../components/motion";
 import { useResource } from "../hooks/useResource";
 import { api, post } from "../services/api";
+import { isJudgeToken } from "../services/judgePreview";
 
 type Indicator = {
   id: string;
@@ -131,7 +132,7 @@ export function ExamDraftPanel({ token }: { token: string }) {
       </label>
       {mode === "template" && catalog.loading && <Pending label="กำลังโหลดตัวชี้วัด…" />}
       <form key={mode} className="stack" onSubmit={submit}>
-        <fieldset className="stack" disabled={busy}>
+        <fieldset className="stack" disabled={busy || isJudgeToken(token)}>
           {mode === "qwen" ? (
             <>
               <label>ระดับชั้น<select name="grade">{[7, 8, 9].map(grade => <option key={grade} value={grade}>ม.{grade - 6}</option>)}</select></label>

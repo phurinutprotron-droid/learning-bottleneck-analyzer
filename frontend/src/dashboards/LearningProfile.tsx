@@ -5,6 +5,7 @@ import { useState } from "react";
 import { BookOpen, Check, ArrowRight, GitBranch } from "lucide-react";
 import type { Profile, Assessment, Subject } from "../types";
 import { api, post } from "../services/api";
+import { isJudgeToken } from "../services/judgePreview";
 import {
   SectionTitle,
   Empty,
@@ -34,6 +35,7 @@ export function LearningProfile({
   home?: boolean;
 }) {
   const { language, t } = useLanguage();
+  const readOnly = isJudgeToken(token);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function action(fn: () => Promise<void>) {
@@ -131,7 +133,7 @@ export function LearningProfile({
             </div>
             <button
               className="secondary"
-              disabled={!profile.consent || busy}
+              disabled={!profile.consent || busy || readOnly}
               onClick={() => action(() => start(s.id))}
             >
               {t("Start assessment", "เริ่มแบบประเมิน")}
@@ -345,7 +347,7 @@ export function LearningProfile({
       {profile.consent && (
         <button
           className="text-button muted"
-          disabled={busy}
+          disabled={busy || readOnly}
           onClick={() =>
             action(async () => {
               await api(

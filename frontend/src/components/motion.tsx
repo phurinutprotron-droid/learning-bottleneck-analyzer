@@ -20,6 +20,23 @@ export function MotionSection({ children }: { children: ReactNode }) {
   return <div className="motion-enter">{children}</div>;
 }
 
+export function LoadingMark({ compact = false }: { compact?: boolean }) {
+  return (
+    <span
+      className={`loading-mark${compact ? " loading-mark-compact" : ""}`}
+      aria-hidden="true"
+    >
+      <span className="loading-orbit" />
+      <img
+        src={import.meta.env.BASE_URL + "lba-logo.svg"}
+        alt=""
+        width={24}
+        height={24}
+      />
+    </span>
+  );
+}
+
 export function Pending({
   label,
   skeleton = false,
@@ -29,16 +46,20 @@ export function Pending({
 }) {
   return (
     <div
-      className={skeleton ? "motion-pending motion-skeleton" : "motion-pending"}
+      className={`motion-pending loading-state${skeleton ? " motion-skeleton" : ""}`}
       role="status"
+      aria-live="polite"
+      aria-atomic="true"
     >
-      {label}
-      <span className="motion-dots" aria-hidden="true">
-        <i />
-        <i />
-        <i />
-      </span>
-      {skeleton && <span className="motion-placeholder" aria-hidden="true" />}
+      <LoadingMark />
+      <span className="loading-label">{label}</span>
+      {skeleton && (
+        <span className="loading-skeletons" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </span>
+      )}
     </div>
   );
 }

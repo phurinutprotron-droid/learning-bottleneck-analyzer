@@ -1,7 +1,12 @@
-const configuredApi = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "";
+import { isJudgeToken, judgePreviewRequest } from "./judgePreview";
+
+const configuredApi =
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "";
 function apiPath(path: string) {
   if (!configuredApi && window.location.hostname.endsWith(".github.io")) {
-    throw new Error("Backend is not configured. Set the VITE_API_BASE_URL repository variable to your HTTPS backend origin and redeploy.");
+    throw new Error(
+      "Backend is not configured. Set the VITE_API_BASE_URL repository variable to your HTTPS backend origin and redeploy.",
+    );
   }
   return configuredApi + "/api" + path;
 }
@@ -19,6 +24,8 @@ export async function api<T>(
   token?: string,
   options: RequestInit = {},
 ): Promise<T> {
+  if (isJudgeToken(token))
+    return judgePreviewRequest(path, token!, options) as T;
   const response = await fetch(apiPath(path), {
     ...options,
     headers: {
@@ -45,6 +52,8 @@ export const post = (body?: unknown): RequestInit => ({
   ...(body === undefined ? {} : { body: JSON.stringify(body) }),
 });
 export async function exportReport(token: string, includeDemo = false) {
+  if (isJudgeToken(token))
+    throw new APIError(403, "Exports are disabled in the public judge preview");
   const response = await fetch(
     apiPath(`/research/export?include_demo=${includeDemo}`),
     {

@@ -45,6 +45,7 @@ import {
 } from "./components/ui";
 import { api, post } from "./services/api";
 import { useResource } from "./hooks/useResource";
+import { createJudgeSession, isJudgeToken } from "./services/judgePreview";
 import type {
   Session,
   Subject,
@@ -55,10 +56,15 @@ import type {
 } from "./types";
 
 export default function App() {
-  return <LanguageProvider><LocalizedApp /></LanguageProvider>;
+  return (
+    <LanguageProvider>
+      <LocalizedApp />
+    </LanguageProvider>
+  );
 }
 
 function LocalizedApp() {
+  const { t } = useLanguage();
   const [session, setSession] = useState<Session | null>(null);
   const [theme, setTheme] = useState(
     () => localStorage.getItem("lba-theme") || "light",
@@ -69,12 +75,21 @@ function LocalizedApp() {
   }, [theme]);
   if (!session) return <AuthPage onSession={setSession} />;
   return (
-    <Suspense fallback={<Pending label="Loading workspace…" skeleton />}>
+    <Suspense
+      fallback={
+        <Pending
+          label={t("Loading workspace…", "กำลังโหลดพื้นที่ทำงาน…")}
+          skeleton
+        />
+      }
+    >
       <Workspace
+        key={session.access_token}
         session={session}
         onLogout={() => setSession(null)}
         theme={theme}
         toggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+        onJudgeRole={(role) => setSession(createJudgeSession(role))}
       />
     </Suspense>
   );
@@ -85,14 +100,17 @@ function Workspace({
   onLogout,
   theme,
   toggleTheme,
+  onJudgeRole,
 }: {
   session: Session;
   onLogout: () => void;
   theme: string;
   toggleTheme: () => void;
+  onJudgeRole: (role: Session["user"]["role"]) => void;
 }) {
   const { t } = useLanguage();
   const { user, access_token: token } = session;
+  const judge = isJudgeToken(token);
   const teacher = user.role === "teacher";
   const researchOnly = user.role === "researcher";
   const [page, setPage] = useState(researchOnly ? "research" : "overview");
@@ -196,25 +214,57 @@ function Workspace({
   }
   const nav = researchOnly
     ? [
-        { id: "research", label: t("Research overview", "ภาพรวมการวิจัย"), icon: FlaskConical },
-        { id: "curriculum", label: t("Curriculum intake", "หลักสูตรและสร้างข้อสอบ"), icon: BookOpen },
-        { id: "graph", label: t("Knowledge graph", "กราฟความรู้"), icon: Network },
+        {
+          id: "research",
+          label: t("Research overview", "ภาพรวมการวิจัย"),
+          icon: FlaskConical,
+        },
+        {
+          id: "curriculum",
+          label: t("Curriculum intake", "หลักสูตรและสร้างข้อสอบ"),
+          icon: BookOpen,
+        },
+        {
+          id: "graph",
+          label: t("Knowledge graph", "กราฟความรู้"),
+          icon: Network,
+        },
       ]
     : [
         { id: "overview", label: t("Home", "หน้าหลัก"), icon: LayoutDashboard },
         ...(teacher
           ? [{ id: "learners", label: t("Learners", "นักเรียน"), icon: Users }]
-          : [{ id: "assessments", label: t("Assessments", "แบบประเมิน"), icon: BookOpen }]),
+          : [
+              {
+                id: "assessments",
+                label: t("Assessments", "แบบประเมิน"),
+                icon: BookOpen,
+              },
+            ]),
         {
           id: "progress",
-          label: teacher ? t("Learning profiles", "โปรไฟล์การเรียน") : t("Learning progress", "ความคืบหน้า"),
+          label: teacher
+            ? t("Learning profiles", "โปรไฟล์การเรียน")
+            : t("Learning progress", "ความคืบหน้า"),
           icon: TrendingUp,
         },
-        { id: "graph", label: t("Knowledge graph", "กราฟความรู้"), icon: Network },
+        {
+          id: "graph",
+          label: t("Knowledge graph", "กราฟความรู้"),
+          icon: Network,
+        },
         ...(teacher
           ? [
-              { id: "research", label: t("Research", "งานวิจัย"), icon: FlaskConical },
-              { id: "curriculum", label: t("Curriculum intake", "หลักสูตรและสร้างข้อสอบ"), icon: BookOpen },
+              {
+                id: "research",
+                label: t("Research", "งานวิจัย"),
+                icon: FlaskConical,
+              },
+              {
+                id: "curriculum",
+                label: t("Curriculum intake", "หลักสูตรและสร้างข้อสอบ"),
+                icon: BookOpen,
+              },
             ]
           : []),
       ];
@@ -273,9 +323,19 @@ function Workspace({
             </span>
             <div>
               <b>{user.handle}</b>
-              <small>{user.role === "student" ? t("Student", "นักเรียน") : teacher ? t("Teacher", "ครู") : t("Researcher", "นักวิจัย")}</small>
+              <small>
+                {user.role === "student"
+                  ? t("Student", "นักเรียน")
+                  : teacher
+                    ? t("Teacher", "ครู")
+                    : t("Researcher", "นักวิจัย")}
+              </small>
             </div>
-            <button title={t("Sign out", "ออกจากระบบ")} aria-label={t("Sign out", "ออกจากระบบ")} onClick={logout}>
+            <button
+              title={t("Sign out", "ออกจากระบบ")}
+              aria-label={t("Sign out", "ออกจากระบบ")}
+              onClick={logout}
+            >
               <LogOut size={17} />
             </button>
           </div>
@@ -287,7 +347,7 @@ function Workspace({
             <Brand />
             {t("Workspace", "พื้นที่ทำงาน")}
             <ChevronRight size={14} />
-            <b>{nav.find(item => item.id === page)?.label ?? pretty(page)}</b>
+            <b>{nav.find((item) => item.id === page)?.label ?? pretty(page)}</b>
           </div>
           <div className="topbar-actions">
             <LanguagePicker />
@@ -313,17 +373,63 @@ function Workspace({
           <div className="pilot-banner">
             <span>
               <GraduationCap size={16} />
-              {t("Unvalidated sample content", "เนื้อหาตัวอย่างที่ยังไม่ผ่านการรับรอง")}
+              {t(
+                "Unvalidated sample content",
+                "เนื้อหาตัวอย่างที่ยังไม่ผ่านการรับรอง",
+              )}
             </span>
             <span>
-              {t("Software demonstration · No educational validity established", "ระบบสาธิต · ยังไม่ได้ยืนยันความเที่ยงตรงทางการศึกษา")}
+              {t(
+                "Software demonstration · No educational validity established",
+                "ระบบสาธิต · ยังไม่ได้ยืนยันความเที่ยงตรงทางการศึกษา",
+              )}
             </span>
           </div>
-          {user.is_demo && (
+          {judge && (
+            <section
+              className="judge-banner"
+              aria-label={t("Judge demonstration", "พื้นที่สาธิตสำหรับกรรมการ")}
+            >
+              <div>
+                <b>
+                  {t(
+                    "Judge preview · example data",
+                    "พื้นที่กรรมการ · ข้อมูลตัวอย่าง",
+                  )}
+                </b>
+                <p>
+                  {t(
+                    "Read-only examples for exploring the interface. Reports are prewritten examples.",
+                    "สำหรับชมตัวอย่างการใช้งาน ข้อมูลและรายงานเตรียมไว้เพื่อสาธิต",
+                  )}
+                </p>
+              </div>
+              <label>
+                {t("Preview as", "เลือกมุมมอง")}
+                <select
+                  value={user.role}
+                  onChange={(event) =>
+                    onJudgeRole(event.target.value as Session["user"]["role"])
+                  }
+                >
+                  <option value="student">{t("Student", "นักเรียน")}</option>
+                  <option value="teacher">{t("Teacher", "ครู")}</option>
+                  <option value="researcher">
+                    {t("Researcher", "นักวิจัย")}
+                  </option>
+                </select>
+              </label>
+            </section>
+          )}
+          {user.is_demo && !judge && (
             <div className="demo-banner" role="status">
               <ShieldCheck size={18} aria-hidden="true" />
               <span>
-                <b>{t("Demonstration account", "บัญชีสาธิต")}</b> · {t("Use fictional answers for software testing.", "ใช้คำตอบสมมติเพื่อทดสอบระบบ")}
+                <b>{t("Demonstration account", "บัญชีสาธิต")}</b> ·{" "}
+                {t(
+                  "Use fictional answers for software testing.",
+                  "ใช้คำตอบสมมติเพื่อทดสอบระบบ",
+                )}
               </span>
             </div>
           )}
@@ -407,19 +513,37 @@ function Workspace({
                   }
                   title={
                     teacher && !selectedStudent
-                      ? t("Every learner has a next step.", "ดูว่าผู้เรียนควรฝึกอะไรต่อ")
+                      ? t(
+                          "Every learner has a next step.",
+                          "ดูว่าผู้เรียนควรฝึกอะไรต่อ",
+                        )
                       : !teacher && page === "overview"
                         ? `${t("Welcome back,", "ยินดีต้อนรับกลับมา")} ${user.handle}`
-                      : page === "progress"
-                        ? t("Watch understanding develop.", "ติดตามความเข้าใจของคุณ")
-                        : t("Let curiosity lead the way.", "เลือกวิชาแล้วเริ่มเรียน")
+                        : page === "progress"
+                          ? t(
+                              "Watch understanding develop.",
+                              "ติดตามความเข้าใจของคุณ",
+                            )
+                          : t(
+                              "Let curiosity lead the way.",
+                              "เลือกวิชาแล้วเริ่มเรียน",
+                            )
                   }
                   subtitle={
                     teacher
                       ? "Review the evidence. Test an explanation. Plan an intentional next step."
-                      : t("Explore what you know, explain your thinking, and discover what to work on next.", "เลือกหัวข้อที่อยากฝึกและดูความคืบหน้าของคุณ")
+                      : t(
+                          "Explore what you know, explain your thinking, and discover what to work on next.",
+                          "เลือกหัวข้อที่อยากฝึกและดูความคืบหน้าของคุณ",
+                        )
                   }
-                  action={<Pill>{teacher ? t("Teacher view", "มุมมองครู") : `${t("Student", "นักเรียน")} · ${gradeLabel}`}</Pill>}
+                  action={
+                    <Pill>
+                      {teacher
+                        ? t("Teacher view", "มุมมองครู")
+                        : `${t("Student", "นักเรียน")} · ${gradeLabel}`}
+                    </Pill>
+                  }
                 />
                 {teacher && (
                   <>

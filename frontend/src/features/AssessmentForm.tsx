@@ -3,6 +3,7 @@ import { useId, useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, LockKeyhole } from "lucide-react";
 import type { Assessment, SavedResponse } from "../types";
 import { api, post } from "../services/api";
+import { isJudgeToken } from "../services/judgePreview";
 import { Pill, pretty } from "../components/ui";
 import {
   collectIssues,
@@ -21,6 +22,7 @@ export function AssessmentForm({
   onBack: () => void;
 }) {
   const { t } = useLanguage();
+  const readOnly = isJudgeToken(token);
   const [saved, setSaved] = useState<SavedResponse[]>(assessment.responses);
   const [answer, setAnswer] = useState("");
   const [reasoning, setReasoning] = useState("");
@@ -36,6 +38,7 @@ export function AssessmentForm({
   );
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (readOnly) return;
     const validation = collectIssues(event.currentTarget);
     setIssues(validation);
     setError("");
@@ -108,6 +111,14 @@ export function AssessmentForm({
         aria-busy={busy}
       >
         <FormFeedback issues={issues} message={error} />
+        {readOnly && (
+          <p className="notice">
+            {t(
+              "Example assessment. You can try the fields; saving answers is disabled in the judge preview.",
+              "แบบประเมินตัวอย่าง ลองกรอกคำตอบได้ โดยไม่มีการบันทึกในพื้นที่กรรมการ",
+            )}
+          </p>
+        )}
         {item ? (
           <>
             <div className="eyebrow">{pretty(item.concept_id)}</div>
@@ -115,7 +126,10 @@ export function AssessmentForm({
               {item.prompt}
             </h1>
             <p>
-              {t("Take your time. Your explanation helps us understand your approach.", "ค่อย ๆ ทำได้ คำอธิบายจะช่วยให้เราเข้าใจวิธีคิดของคุณ")}
+              {t(
+                "Take your time. Your explanation helps us understand your approach.",
+                "ค่อย ๆ ทำได้ คำอธิบายจะช่วยให้เราเข้าใจวิธีคิดของคุณ",
+              )}
             </p>
             {item.kind === "multiple_choice" ? (
               <fieldset>
@@ -198,7 +212,10 @@ export function AssessmentForm({
                 rows={4}
                 value={reasoning}
                 onChange={(e) => setReasoning(e.target.value)}
-                placeholder={t("What steps did you take, and why?", "ทำอย่างไรและเพราะอะไร")}
+                placeholder={t(
+                  "What steps did you take, and why?",
+                  "ทำอย่างไรและเพราะอะไร",
+                )}
               />
               {fieldError("reasoning") && (
                 <span className="field-error" id={`${formId}-reasoning-error`}>
@@ -234,14 +251,19 @@ export function AssessmentForm({
                 ))}
               </div>
               <small>
-                {t("Confidence describes how you feel; it does not prove understanding.", "ความมั่นใจสะท้อนความรู้สึกของคุณ และใช้ร่วมกับหลักฐานจากคำตอบ")}
+                {t(
+                  "Confidence describes how you feel; it does not prove understanding.",
+                  "ความมั่นใจสะท้อนความรู้สึกของคุณ และใช้ร่วมกับหลักฐานจากคำตอบ",
+                )}
               </small>
             </fieldset>
           </>
         ) : (
           <>
             <h1>{t("All answers saved.", "บันทึกคำตอบครบแล้ว")}</h1>
-            <p>{t("Finish to see your observations.", "ส่งแบบประเมินเพื่อดูผล")}</p>
+            <p>
+              {t("Finish to see your observations.", "ส่งแบบประเมินเพื่อดูผล")}
+            </p>
           </>
         )}
         <div className="assessment-actions">
@@ -249,7 +271,7 @@ export function AssessmentForm({
             <LockKeyhole size={14} />
             {t("Original answers are preserved", "ระบบเก็บคำตอบต้นฉบับไว้")}
           </span>
-          <button className="primary" disabled={busy}>
+          <button className="primary" disabled={busy || readOnly}>
             {busy
               ? t("Saving…", "กำลังบันทึก…")
               : !item || saved.length + 1 === assessment.items.length

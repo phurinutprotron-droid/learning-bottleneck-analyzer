@@ -1,0 +1,208 @@
+.loading-state {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--ds-space-16);
+  padding: var(--ds-space-20);
+  border-radius: var(--workspace-card, 24px);
+  background: var(--panel, white);
+  color: var(--muted, #646464);
+  font-size: 14px;
+}
+.loading-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--soft, #eef5f2);
+}
+.loading-mark img {
+  display: block;
+}
+.loading-orbit {
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  border-top-color: var(--accent, #087f5b);
+  border-right-color: color-mix(
+    in srgb,
+    var(--accent, #087f5b) 30%,
+    transparent
+  );
+  border-radius: 50%;
+  animation: lba-loading-orbit 1.2s linear infinite;
+}
+.loading-mark-compact {
+  width: 20px;
+  height: 20px;
+  background: transparent;
+}
+.loading-mark-compact img {
+  display: none;
+}
+.loading-mark-compact .loading-orbit {
+  border-top-color: currentColor;
+  border-right-color: transparent;
+}
+.auth-layout form[aria-busy="true"] button.primary {
+  opacity: 1;
+}
+.loading-label {
+  min-width: 0;
+  line-height: 1.7;
+}
+.loading-skeletons {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--ds-space-12);
+  padding-block: var(--ds-space-8);
+}
+.loading-skeletons i {
+  height: 10px;
+  width: 100%;
+  border-radius: 8px;
+  background: var(--line, #e3e3e3);
+  animation: lba-loading-breathe 1.4s ease-in-out infinite alternate;
+}
+.loading-skeletons i:nth-child(2) {
+  width: 80%;
+  animation-delay: 120ms;
+}
+.loading-skeletons i:nth-child(3) {
+  width: 55%;
+  animation-delay: 240ms;
+}
+@keyframes lba-loading-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes lba-loading-breathe {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-orbit,
+  .loading-skeletons i {
+    animation: none !important;
+  }
+  .loading-skeletons i {
+    opacity: 0.7;
+  }
+}
+
+.auth-layout[data-portal="judge"] {
+  --portal-background: #145c49;
+  --portal-accent: #145c49;
+  --portal-highlight: #dcffed;
+}
+.judge-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-block: 24px;
+  padding: 16px 20px;
+  border-radius: var(--workspace-control);
+  background: var(--soft);
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.judge-entry:hover {
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+}
+.judge-login {
+  display: grid;
+  gap: 16px;
+}
+.judge-login > p {
+  font-size: 14px;
+  line-height: 1.8;
+}
+.judge-login form {
+  display: grid;
+  gap: 20px;
+  margin-top: 8px;
+}
+.judge-heading-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--soft);
+  color: var(--accent);
+}
+.judge-password {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+.auth-layout .judge-password input {
+  width: 100%;
+  padding-right: 52px;
+}
+.judge-password .icon-button {
+  position: absolute;
+  right: 4px;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  color: var(--muted);
+}
+.judge-login .judge-login-note {
+  font-size: 12px;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+.judge-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: var(--workspace-control);
+  margin-top: 16px;
+}
+.judge-banner b {
+  font-size: 15px;
+  font-weight: 600;
+}
+.judge-banner p {
+  font-size: 13px;
+  margin-top: 4px;
+}
+.judge-banner label {
+  min-width: 160px;
+  font-size: 12px;
+}
+.judge-banner select {
+  width: 100%;
+}
+@media (max-width: 760px) {
+  .judge-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 16px;
+  }
+  .judge-banner label {
+    min-width: 0;
+  }
+  .judge-entry {
+    padding: 14px 16px;
+  }
+}

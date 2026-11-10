@@ -1,8 +1,5 @@
 name: Live Pages browser smoke
 on:
-  push:
-    branches: [main]
-    paths: ['qa/browser-smoke.mjs', '.github/workflows/browser-smoke.yml']
   workflow_run:
     workflows: ['Deploy LBA to GitHub Pages']
     types: [completed]
