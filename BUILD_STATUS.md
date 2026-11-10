@@ -1,5 +1,13 @@
 # LBA build status
 
+## Shared interface rollout — 2026-11-10
+
+- The owner approved the learner Home style for all pages. Shared materials now cover all three sign-in portals, registration, student/teacher/research workspaces, assessment/evidence/AI controls, curriculum/exam drafting, graph and graph dialogs.
+- Nine frontend tests passed and the release source passed TypeScript and Vite build. Local synthetic-fixture Chromium checks passed 29 role/page states at 320/390/1440px, 87 captures, with no document overflow or runtime exceptions.
+- The graph refits on resize, including All subjects on a 320px phone. Mobile teacher destinations remain reachable through the horizontally scrollable labelled dock.
+- The release source is being published through the existing Pages workflow. Live deployment verification is pending. [Interface implementation and review scope](docs/UI_SYSTEM.md).
+
+
 ## Current phase
 The research MVP follows the dependency order of the original 21-day plan. Cloudflare/Neon deployment has passed live API integration and production HTTPS/auth/CORS checks. The online variant preserves the Python implementation as the reference and uses a native Worker for hosting. The published GitHub Pages frontend has passed actual browser registration, CORS, dashboard rendering and mobile layout checks. This is software validation, not 21 calendar days of research validation.
 

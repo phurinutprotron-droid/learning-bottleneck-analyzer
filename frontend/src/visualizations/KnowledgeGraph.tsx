@@ -1,5 +1,13 @@
-import { ReactFlow, Background, Controls, MarkerType } from "@xyflow/react";
-import { useId, useRef, useState } from "react";
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MarkerType,
+  type ReactFlowInstance,
+  type Node,
+  type Edge,
+} from "@xyflow/react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Pending } from "../components/motion";
 import "@xyflow/react/dist/style.css";
 import { useResource } from "../hooks/useResource";
@@ -53,9 +61,31 @@ export function KnowledgeGraph({
 }
 
 function InteractiveGraph({ data }: { data: GraphData }) {
+  const graphContainer = useRef<HTMLDivElement>(null);
+  const flow = useRef<ReactFlowInstance | null>(null);
   const [selection, setSelection] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  useEffect(() => {
+    const container = graphContainer.current;
+    if (!container) return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        void flow.current?.fitView({
+          padding: 0.2,
+          minZoom: 0.01,
+          maxZoom: 1.4,
+        });
+      });
+    });
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, []);
   const selected = data.nodes.find((node) => node.id === selection);
   const path = selected
     ? tracePath(data.edges, selected.id)
@@ -65,7 +95,7 @@ function InteractiveGraph({ data }: { data: GraphData }) {
     highlighted.add(data.edges[index].source_id);
     highlighted.add(data.edges[index].target_id);
   }
-  const nodes = data.nodes.map((n, i) => ({
+  const nodes: Node[] = data.nodes.map((n, i) => ({
     id: n.id,
     selected: n.id === selection,
     className:
@@ -80,27 +110,27 @@ function InteractiveGraph({ data }: { data: GraphData }) {
       border: highlighted.has(n.id)
         ? "2px solid var(--accent)"
         : "1px solid var(--line)",
-      borderRadius: 12,
+      borderRadius: "var(--ds-radius-16)",
       padding: 18,
       width: 210,
       fontSize: 14,
     },
   }));
-  const edges = data.edges.map((e, i) => ({
+  const edges: Edge[] = data.edges.map((e, i) => ({
     id: `${i}`,
     source: e.source_id,
     target: e.target_id,
     label: e.relationship_type,
     markerEnd: {
       type: MarkerType.ArrowClosed,
-      color: path.has(i) ? "var(--accent)" : "#568775",
+      color: path.has(i) ? "var(--accent)" : "var(--muted)",
     },
     style: {
-      stroke: path.has(i) ? "var(--accent)" : "#568775",
+      stroke: path.has(i) ? "var(--accent)" : "var(--muted)",
       strokeWidth: path.has(i) ? 4 : 2,
       strokeDasharray: selected && !path.has(i) ? "4 4" : undefined,
     },
-    labelStyle: { fill: "#204b40", fontSize: 12 },
+    labelStyle: { fill: "var(--text)", fontSize: 12 },
   }));
   return (
     <>
@@ -157,13 +187,19 @@ function InteractiveGraph({ data }: { data: GraphData }) {
       </dialog>
       <div
         className="panel graph"
+        ref={graphContainer}
         role="region"
         aria-label="Prerequisite concept graph"
       >
         <ReactFlow
+          onInit={(instance) => {
+            flow.current = instance;
+          }}
           nodes={nodes}
           edges={edges}
           fitView
+          fitViewOptions={{ padding: 0.2, minZoom: 0.01, maxZoom: 1.4 }}
+          minZoom={0.01}
           nodesDraggable={false}
           nodesConnectable={false}
           onNodeClick={(_, node) => setSelection(node.id)}
@@ -171,7 +207,7 @@ function InteractiveGraph({ data }: { data: GraphData }) {
           edgesFocusable={false}
           elementsSelectable={false}
         >
-          <Background color="#9ba99f" gap={24} />
+          <Background color="var(--line)" gap={24} />
           <Controls showInteractive={false} />
         </ReactFlow>
       </div>

@@ -123,6 +123,12 @@ function Workspace({
     revision,
   );
   const refresh = () => setRevision((n) => n + 1);
+  const gradeLabel = profile
+    ? t(
+        `Grade ${profile.grade}`,
+        profile.grade <= 6 ? `ป.${profile.grade}` : `ม.${profile.grade - 6}`,
+      )
+    : "—";
   function navigate(next: string) {
     setPage(next);
     setAssessment(null);
@@ -212,8 +218,17 @@ function Workspace({
             ]
           : []),
       ];
+  const mobileLabels: Record<string, string> = {
+    overview: t("Home", "หน้าหลัก"),
+    assessments: t("Assess", "แบบประเมิน"),
+    learners: t("Learners", "นักเรียน"),
+    progress: t("Progress", "ความคืบหน้า"),
+    graph: t("Graph", "กราฟ"),
+    research: t("Research", "งานวิจัย"),
+    curriculum: t("Curriculum", "หลักสูตร"),
+  };
   return (
-    <div className="app-shell">
+    <div className="app-shell design-workspace" data-role={user.role}>
       <aside className="sidebar motion-sidebar">
         <Brand />
         <div className="workspace-label">
@@ -228,11 +243,16 @@ function Workspace({
             <button
               key={n.id}
               className={page === n.id ? "active" : ""}
+              title={n.label}
+              aria-label={n.label}
               aria-current={page === n.id ? "page" : undefined}
               onClick={() => navigate(n.id)}
             >
               <n.icon size={18} />
-              {n.label}
+              <span className="nav-label">{n.label}</span>
+              <span className="nav-mobile-label" aria-hidden="true">
+                {mobileLabels[n.id] ?? n.label}
+              </span>
               {page === n.id && <span className="nav-dot" />}
             </button>
           ))}
@@ -264,6 +284,7 @@ function Workspace({
       <div className="main-column">
         <header className="topbar">
           <div className="breadcrumbs">
+            <Brand />
             {t("Workspace", "พื้นที่ทำงาน")}
             <ChevronRight size={14} />
             <b>{nav.find(item => item.id === page)?.label ?? pretty(page)}</b>
@@ -271,7 +292,7 @@ function Workspace({
           <div className="topbar-actions">
             <LanguagePicker />
             <span className="status-dot" />
-            <span>{t("Local pilot environment", "ระบบทดลองในเครื่อง")}</span>
+            <span>{user.handle}</span>
             <button
               className="icon-button"
               aria-label={t("Toggle theme", "เปลี่ยนธีม")}
@@ -387,6 +408,8 @@ function Workspace({
                   title={
                     teacher && !selectedStudent
                       ? t("Every learner has a next step.", "ดูว่าผู้เรียนควรฝึกอะไรต่อ")
+                      : !teacher && page === "overview"
+                        ? `${t("Welcome back,", "ยินดีต้อนรับกลับมา")} ${user.handle}`
                       : page === "progress"
                         ? t("Watch understanding develop.", "ติดตามความเข้าใจของคุณ")
                         : t("Let curiosity lead the way.", "เลือกวิชาแล้วเริ่มเรียน")
@@ -396,7 +419,7 @@ function Workspace({
                       ? "Review the evidence. Test an explanation. Plan an intentional next step."
                       : t("Explore what you know, explain your thinking, and discover what to work on next.", "เลือกหัวข้อที่อยากฝึกและดูความคืบหน้าของคุณ")
                   }
-                  action={<Pill>{teacher ? "Teacher" : "Student"} view</Pill>}
+                  action={<Pill>{teacher ? t("Teacher view", "มุมมองครู") : `${t("Student", "นักเรียน")} · ${gradeLabel}`}</Pill>}
                 />
                 {teacher && (
                   <>

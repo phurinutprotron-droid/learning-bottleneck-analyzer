@@ -144,7 +144,7 @@ export function ResearchDashboard({
                         isAnimationActive={!reduced}
                         animationDuration={dataMotionMs}
                         animationEasing="ease-out"
-                        fill="#386f5a"
+                        fill="var(--accent)"
                         radius={[6, 6, 0, 0]}
                       />
                     </BarChart>

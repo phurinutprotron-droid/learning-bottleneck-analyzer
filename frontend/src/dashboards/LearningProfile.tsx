@@ -1,4 +1,5 @@
 import { SubjectTree } from "./SubjectTree";
+import { HomeOverview } from "./HomeOverview";
 import { useLanguage, subjectLabel } from "../i18n";
 import { useState } from "react";
 import { BookOpen, Check, ArrowRight, GitBranch } from "lucide-react";
@@ -92,10 +93,17 @@ export function LearningProfile({
         </div>
       )}
       {home ? (
-        <SubjectTree profile={profile} subjects={subjects} busy={busy} onOpen={(subject, open) => {
-          if (open) onAssessment(open);
-          else void action(() => start(subject.id));
-        }} />
+        <HomeOverview profile={profile} subjects={subjects} onResume={onAssessment}>
+          <SubjectTree
+            profile={profile}
+            subjects={subjects}
+            busy={busy}
+            onOpen={(subject, open) => {
+              if (open) onAssessment(open);
+              else void action(() => start(subject.id));
+            }}
+          />
+        </HomeOverview>
       ) : <>
       <SectionTitle
         aside={
