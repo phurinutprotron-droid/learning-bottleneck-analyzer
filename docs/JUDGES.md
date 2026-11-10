@@ -27,3 +27,7 @@ Status text remains accessible to screen readers. `prefers-reduced-motion` rende
 - Independent source and screenshot review found no blocking issue. Safari/iOS and screen-reader operation were not exercised.
 
 The live browser workflow runs after a successful Pages deployment. It verifies the public judge link, posted credentials, all three views, no backend record requests from the preview, and real-backend rejection of a public preview token. Its normal synthetic student registration is erased during cleanup.
+
+## Published verification
+
+Pages run [42838667779](https://github.com/phurinutprotron-droid/learning-bottleneck-analyzer/actions/runs/42838667779) passed all 18 frontend tests, production build and public asset checks. Live browser run [42839378675](https://github.com/phurinutprotron-droid/learning-bottleneck-analyzer/actions/runs/42839378675) passed normal student registration/CORS/Home, the judge link and prefilled credentials, all three preview views, research demo inclusion/exclusion and zero backend record requests from the judge interface. The real backend returned 401 for the public preview token. The temporary real smoke-test learner account was erased during cleanup.
