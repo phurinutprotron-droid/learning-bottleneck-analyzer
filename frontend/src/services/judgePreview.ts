@@ -302,9 +302,21 @@ export function judgePreviewRequest(
     ];
   else if (route === `/students/${profile.id}` && role !== "researcher")
     result = profile;
-  else if (route === "/research/summary" && role !== "student")
-    result = research;
-  else if (route === "/curriculum/status" && role !== "student")
+  else if (route === "/research/summary" && role !== "student") {
+    result =
+      url.searchParams.get("include_demo") === "true"
+        ? research
+        : {
+            ...research,
+            data_status:
+              "Example records excluded · no included research records",
+            include_demo: false,
+            students: 0,
+            responses: 0,
+            completed_baselines: 0,
+            diagnostic_runs: 0,
+          };
+  } else if (route === "/curriculum/status" && role !== "student")
     result = {
       sources: [],
       verified_indicators: 0,

@@ -57,6 +57,10 @@ try {
     await page.locator('.learner-list button').first().waitFor({state: 'visible'});
     await page.locator('.judge-banner select').selectOption('researcher');
     await page.locator('.dataset-toggle').waitFor({state: 'visible'});
+    await page.locator('.dataset-toggle input').uncheck();
+    await page.waitForFunction(() => document.querySelector('.stats-grid .stat strong .sr-only')?.textContent === '0');
+    await page.locator('.dataset-toggle input').check();
+    await page.waitForFunction(() => document.querySelector('.stats-grid .stat strong .sr-only')?.textContent === '1');
     assert.equal(await page.locator('.page-header button').isDisabled(), true, 'Judge data exports must be disabled');
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Judge mobile page overflows');
     assert.deepEqual(judgeRequests, [], 'Judge interface must not request real backend records');

@@ -4,7 +4,7 @@
 
 - Added a public judge sign-in page with prefilled convenience credentials and student/teacher/researcher views. The view is an isolated, read-only frontend demonstration using labelled example data. Production accounts, sessions and student records are not exposed.
 - Added branded boot, pending/skeleton and login loading states tied to real request lifetimes, with static reduced-motion alternatives and no simulated completion percentages.
-- Seventeen frontend tests passed. Local Chromium checked 36 captures at 320/390/1440px, zero preview API network requests, loading/error transitions and reduced motion. Independent source and screenshot review found no blocking issue.
+- Eighteen frontend tests passed. Local Chromium checked 36 captures at 320/390/1440px, zero preview API network requests, loading/error transitions and reduced motion. Independent source and screenshot review found no blocking issue.
 - Publishing through Pages. Live judge entry and backend token rejection checks are pending. [Preview boundaries and verification](docs/JUDGES.md).
 
 

@@ -20,7 +20,7 @@ Status text remains accessible to screen readers. `prefers-reduced-motion` rende
 
 ## Validation
 
-- Seventeen frontend tests passed. The eight new tests cover public credential entry, no-backend preview loading, independent payloads, write/export/unknown-record rejection, prewritten report boundaries, preservation of normal authenticated fetch, accessible pending labels and request-bound login loading/error cleanup.
+- Eighteen frontend tests passed. The nine new tests cover public credential entry, no-backend preview loading, independent payloads, write/export/unknown-record rejection, prewritten report boundaries, research demo filtering, preservation of normal authenticated fetch, accessible pending labels and request-bound login loading/error cleanup.
 - Local Chromium captured 36 views at 1440, 390 and 320px with no viewport overflow or uncaught runtime exceptions.
 - The local judge phase issued zero API network requests. Boot loading was tested by holding the actual entry-module request. Login loading was tested with a held authentication request and a controlled 401 response.
 - Reduced-motion animation names were checked as `none`. Login error handling removed the compact loader and re-enabled the button.

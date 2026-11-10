@@ -7,7 +7,7 @@ import { JudgeLogin } from "../pages/JudgeLogin";
 import { Pending } from "../components/motion";
 import { api, exportReport, post } from "../services/api";
 import { createJudgeSession, judgeCredentials } from "../services/judgePreview";
-import type { Profile, Subject } from "../types";
+import type { Profile, Subject, Research } from "../types";
 
 beforeEach(() => {
   window.history.replaceState(null, "", "/");
@@ -93,13 +93,11 @@ describe("public judge preview", () => {
   });
 
   it("preserves the normal authenticated API path", async () => {
-    const fetcher = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify({ id: "real-authorized-profile" }), {
-          status: 200,
-        }),
-      );
+    const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ id: "real-authorized-profile" }), {
+        status: 200,
+      }),
+    );
     expect(
       await api("/students/real-authorized-profile", "normal-token"),
     ).toEqual({ id: "real-authorized-profile" });
@@ -109,6 +107,25 @@ describe("public judge preview", () => {
         headers: { Authorization: "Bearer normal-token" },
       }),
     );
+  });
+  it("excludes the illustrative records when the research demo filter is cleared", async () => {
+    const token = createJudgeSession("researcher").access_token;
+    const included = await api<Research>(
+      "/research/summary?include_demo=true",
+      token,
+    );
+    const excluded = await api<Research>(
+      "/research/summary?include_demo=false",
+      token,
+    );
+    expect(included.students).toBe(1);
+    expect(excluded).toMatchObject({
+      include_demo: false,
+      students: 0,
+      responses: 0,
+      completed_baselines: 0,
+      diagnostic_runs: 0,
+    });
   });
 });
 
