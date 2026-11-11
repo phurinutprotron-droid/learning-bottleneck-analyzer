@@ -5,7 +5,8 @@
 - Added one persistent sliding highlight for the sign-in portal, workspace navigation and Home activity-period controls. Button bounds, responsive changes, language changes and mobile scrolling are measured directly.
 - Content uses subtle directional entry. Navigation stays mounted while lazy content loads. Reduced motion keeps a static highlight and opacity-only feedback.
 - All 18 frontend tests and the production build passed. Local Chromium checked six intermediate slides, rapid retargeting, language changes,320/390/1440px layouts and reduced-motion styles with no runtime exceptions. Independent review found no blocking issue.
-- Publishing through Pages. Live marker alignment and navigation-persistence checks are pending.
+- Published in Pages run 43034372237; fresh dependency installation, all 18 frontend tests, production build and public asset checks passed. The independent native Chromium probe also passed against the deployed HTTPS site, including six intermediate slides, final alignment, rapid retargeting, language changes, responsive navigation and reduced motion.
+- Automated live browser run 43034502820 failed before application tests: the runner could not resolve Ubuntu package mirrors while installing browser fonts. A rerun was requested. This infrastructure failure is separate from the completed direct live UI verification.
 
 
 ## Judge entry and request-bound loading — 2026-11-10
