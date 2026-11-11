@@ -16,8 +16,26 @@ const errors = [];
 page.on('pageerror', error => errors.push(error.name));
 let session;
 await mkdir('browser-artifacts', {recursive: true});
+async function waitForHighlight(selector) {
+  await page.waitForFunction(selector => {
+    const group = document.querySelector(selector);
+    const selected = group?.querySelector('button[data-slide-active="true"]');
+    const marker = group?.querySelector('.sliding-highlight');
+    if (!selected || !marker) return false;
+    const a = selected.getBoundingClientRect(), b = marker.getBoundingClientRect();
+    return Math.abs(a.left - b.left) < 1.5 && Math.abs(a.top - b.top) < 1.5 && Math.abs(a.width - b.width) < 1.5;
+  }, selector);
+}
 try {
   await page.goto(site + '?qa=' + suffix, {waitUntil: 'networkidle', timeout: 60000});
+  await page.emulateMedia({reducedMotion: 'no-preference'});
+  await page.locator('.portal-picker .sliding-highlight').evaluate(marker => {marker.dataset.smokeIdentity = 'persistent';});
+  for (const index of [1, 2, 0]) await page.locator('.portal-picker button').nth(index).click();
+  await waitForHighlight('.portal-picker');
+  assert.equal(await page.locator('.portal-picker .sliding-highlight').getAttribute('data-smoke-identity'), 'persistent');
+  assert.ok(await page.locator('.portal-picker .sliding-highlight').evaluate(marker => getComputedStyle(marker).transitionProperty.includes('transform')));
+  await page.emulateMedia({reducedMotion: 'reduce'});
+  assert.equal(await page.locator('.portal-picker .sliding-highlight').evaluate(marker => getComputedStyle(marker).transitionDuration), '0s');
   await page.getByRole('button', {name: /New learner|นักเรียนใหม่/}).click();
   await page.locator('input[name="handle"]').fill(handle);
   await page.locator('input[name="password"]').fill(password);
@@ -52,9 +70,18 @@ try {
     await page.locator('.judge-login form button.primary').click();
     await page.locator('.judge-banner').waitFor({state: 'visible'});
     await page.locator('.learning-tree').waitFor({state: 'visible'});
+    await page.locator('.home-period button').nth(1).click();
+    await waitForHighlight('.home-period');
+    await page.locator('.home-period button').nth(0).click();
+    await waitForHighlight('.home-period');
     await page.screenshot({path: 'browser-artifacts/judge-student-mobile-example.png', fullPage: true});
     await page.locator('.judge-banner select').selectOption('teacher');
     await page.locator('.learner-list button').first().waitFor({state: 'visible'});
+    await page.locator('.workspace-nav .sliding-highlight').evaluate(marker => {marker.dataset.smokeIdentity = 'sidebar-mounted';});
+    await page.locator('.workspace-nav button').nth(4).click();
+    await page.locator('.dataset-toggle').waitFor({state: 'visible'});
+    await waitForHighlight('.workspace-nav');
+    assert.equal(await page.locator('.workspace-nav .sliding-highlight').getAttribute('data-smoke-identity'), 'sidebar-mounted', 'Lazy content must not remount the navigation');
     await page.locator('.judge-banner select').selectOption('researcher');
     await page.locator('.dataset-toggle').waitFor({state: 'visible'});
     await page.locator('.dataset-toggle input').uncheck();
@@ -66,6 +93,7 @@ try {
     assert.deepEqual(judgeRequests, [], 'Judge interface must not request real backend records');
     assert.equal(errors.length, 0, 'Judge interface runtime error');
     console.log('Live public judge link, prefilled credentials, all three views and zero backend record requests passed');
+    console.log('Sliding highlights, persistent navigation across lazy content and reduced-motion alternatives passed');
   } finally {
     page.off('request', trackJudgeRequests);
   }

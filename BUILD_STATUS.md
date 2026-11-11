@@ -1,5 +1,13 @@
 # LBA build status
 
+## Smooth selection and content entry — 2026-11-11
+
+- Added one persistent sliding highlight for the sign-in portal, workspace navigation and Home activity-period controls. Button bounds, responsive changes, language changes and mobile scrolling are measured directly.
+- Content uses subtle directional entry. Navigation stays mounted while lazy content loads. Reduced motion keeps a static highlight and opacity-only feedback.
+- All 18 frontend tests and the production build passed. Local Chromium checked six intermediate slides, rapid retargeting, language changes,320/390/1440px layouts and reduced-motion styles with no runtime exceptions. Independent review found no blocking issue.
+- Publishing through Pages. Live marker alignment and navigation-persistence checks are pending.
+
+
 ## Judge entry and request-bound loading — 2026-11-10
 
 - Added a public judge sign-in page with prefilled convenience credentials and student/teacher/researcher views. The view is an isolated, read-only frontend demonstration using labelled example data. Production accounts, sessions and student records are not exposed.

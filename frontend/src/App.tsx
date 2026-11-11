@@ -46,6 +46,7 @@ import {
 import { api, post } from "./services/api";
 import { useResource } from "./hooks/useResource";
 import { createJudgeSession, isJudgeToken } from "./services/judgePreview";
+import { SlidingHighlight } from "./components/SlidingHighlight";
 import type {
   Session,
   Subject,
@@ -64,7 +65,6 @@ export default function App() {
 }
 
 function LocalizedApp() {
-  const { t } = useLanguage();
   const [session, setSession] = useState<Session | null>(null);
   const [theme, setTheme] = useState(
     () => localStorage.getItem("lba-theme") || "light",
@@ -75,23 +75,14 @@ function LocalizedApp() {
   }, [theme]);
   if (!session) return <AuthPage onSession={setSession} />;
   return (
-    <Suspense
-      fallback={
-        <Pending
-          label={t("Loading workspace…", "กำลังโหลดพื้นที่ทำงาน…")}
-          skeleton
-        />
-      }
-    >
-      <Workspace
-        key={session.access_token}
-        session={session}
-        onLogout={() => setSession(null)}
-        theme={theme}
-        toggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-        onJudgeRole={(role) => setSession(createJudgeSession(role))}
-      />
-    </Suspense>
+    <Workspace
+      key={session.access_token}
+      session={session}
+      onLogout={() => setSession(null)}
+      theme={theme}
+      toggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+      onJudgeRole={(role) => setSession(createJudgeSession(role))}
+    />
   );
 }
 
@@ -114,6 +105,9 @@ function Workspace({
   const teacher = user.role === "teacher";
   const researchOnly = user.role === "researcher";
   const [page, setPage] = useState(researchOnly ? "research" : "overview");
+  const [pageDirection, setPageDirection] = useState<"forward" | "backward">(
+    "forward",
+  );
   const [selectedStudent, setSelectedStudent] = useState(user.student_id);
   const [revision, setRevision] = useState(0);
   const [assessment, setAssessment] = useState<Assessment | null>(null);
@@ -148,6 +142,12 @@ function Workspace({
       )
     : "—";
   function navigate(next: string) {
+    setPageDirection(
+      nav.findIndex((item) => item.id === next) >=
+        nav.findIndex((item) => item.id === page)
+        ? "forward"
+        : "backward",
+    );
     setPage(next);
     setAssessment(null);
     setRun(null);
@@ -288,7 +288,11 @@ function Workspace({
               ? t("RESEARCH WORKSPACE", "พื้นที่นักวิจัย")
               : t("LEARNER WORKSPACE", "พื้นที่นักเรียน")}
         </div>
-        <nav aria-label={t("Main navigation", "เมนูหลัก")}>
+        <nav
+          className="sliding-group workspace-nav"
+          aria-label={t("Main navigation", "เมนูหลัก")}
+        >
+          <SlidingHighlight activeKey={page} />
           {nav.map((n) => (
             <button
               key={n.id}
@@ -296,6 +300,7 @@ function Workspace({
               title={n.label}
               aria-label={n.label}
               aria-current={page === n.id ? "page" : undefined}
+              data-slide-active={page === n.id}
               onClick={() => navigate(n.id)}
             >
               <n.icon size={18} />
@@ -436,230 +441,242 @@ function Workspace({
           <ErrorNotice
             message={error || profileError || subjectError || learnersError}
           />
-          <MotionSection key={assessment?.id ?? page}>
-            {assessment ? (
-              <AssessmentForm
-                key={assessment.id}
-                assessment={assessment}
-                token={token}
-                onComplete={completed}
-                onBack={() => {
-                  setAssessment(null);
-                  refresh();
-                }}
+          <Suspense
+            fallback={
+              <Pending
+                label={t("Loading workspace…", "กำลังโหลดพื้นที่ทำงาน…")}
+                skeleton
               />
-            ) : page === "research" ? (
-              <ResearchDashboard
-                token={token}
-                revision={revision}
-                demo={!!user.is_demo}
-              />
-            ) : page === "curriculum" ? (
-              <CurriculumStatus token={token} teacher={teacher} />
-            ) : page === "graph" ? (
-              <>
-                <PageHeader
-                  eyebrow="CONCEPT RELATIONSHIPS"
-                  title="See the connections."
-                  subtitle="Explore prerequisites with their provenance and review status."
-                />
-                <label className="subject-select">
-                  Subject
-                  <select
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                  >
-                    <option value="all">
-                      All subjects · cross-subject connections
-                    </option>
-                    {subjects?.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <KnowledgeGraph subject={subject} token={token} />
-              </>
-            ) : page === "evidence" && run && baseline && selectedStudent ? (
-              <>
-                <button
-                  className="text-button"
-                  onClick={() => navigate("progress")}
-                >
-                  <ArrowLeft size={16} />
-                  Back to learning profile
-                </button>
-                <PageHeader
-                  eyebrow="DIAGNOSTIC WORKSPACE"
-                  title="A better question comes next."
-                  subtitle="Keep observations, possible explanations, and verification results distinct."
-                />
-                <EvidencePanel
-                  run={run}
+            }
+          >
+            <MotionSection
+              key={assessment?.id ?? page}
+              direction={pageDirection}
+            >
+              {assessment ? (
+                <AssessmentForm
+                  key={assessment.id}
+                  assessment={assessment}
                   token={token}
-                  teacher={teacher}
-                  studentId={selectedStudent}
-                  baseline={baseline}
-                  onVerify={nextVerification}
-                  onChange={refresh}
+                  onComplete={completed}
+                  onBack={() => {
+                    setAssessment(null);
+                    refresh();
+                  }}
                 />
-              </>
-            ) : (
-              <>
-                <PageHeader
-                  eyebrow={
-                    teacher ? "LEARNING, IN FOCUS" : "YOUR LEARNING, IN FOCUS"
-                  }
-                  title={
-                    teacher && !selectedStudent
-                      ? t(
-                          "Every learner has a next step.",
-                          "ดูว่าผู้เรียนควรฝึกอะไรต่อ",
-                        )
-                      : !teacher && page === "overview"
-                        ? `${t("Welcome back,", "ยินดีต้อนรับกลับมา")} ${user.handle}`
-                        : page === "progress"
-                          ? t(
-                              "Watch understanding develop.",
-                              "ติดตามความเข้าใจของคุณ",
-                            )
-                          : t(
-                              "Let curiosity lead the way.",
-                              "เลือกวิชาแล้วเริ่มเรียน",
-                            )
-                  }
-                  subtitle={
-                    teacher
-                      ? "Review the evidence. Test an explanation. Plan an intentional next step."
-                      : t(
-                          "Explore what you know, explain your thinking, and discover what to work on next.",
-                          "เลือกหัวข้อที่อยากฝึกและดูความคืบหน้าของคุณ",
-                        )
-                  }
-                  action={
-                    <Pill>
-                      {teacher
-                        ? t("Teacher view", "มุมมองครู")
-                        : `${t("Student", "นักเรียน")} · ${gradeLabel}`}
-                    </Pill>
-                  }
+              ) : page === "research" ? (
+                <ResearchDashboard
+                  token={token}
+                  revision={revision}
+                  demo={!!user.is_demo}
                 />
-                {teacher && (
-                  <>
-                    <div className="stats-grid">
-                      <Stat
-                        label="Learners"
-                        value={learners?.length ?? "—"}
-                        detail="Anonymous local learner records"
-                      />
-                      <Stat
-                        label="Completed assessments"
-                        value={
-                          learners?.reduce(
-                            (n, l) => n + l.assessments_completed,
-                            0,
-                          ) ?? "—"
-                        }
-                        detail="All stages combined"
-                      />
-                      <Stat
-                        label="Selected profile"
-                        value={profile?.anonymous_id || "—"}
-                        detail="Choose a learner below"
-                      />
-                      <Stat
-                        label="Content review"
-                        value="Pending"
-                        detail="Two unvalidated sample packs"
-                      />
-                    </div>
-                    <section className="panel learner-picker">
-                      <SectionTitle
-                        aside={
-                          <div className="search">
-                            <Search size={16} />
-                            <input
-                              aria-label="Find learner"
-                              placeholder="Find anonymous learner"
-                              value={search}
-                              onChange={(e) => setSearch(e.target.value)}
-                            />
-                          </div>
-                        }
-                      >
-                        Learner overview
-                      </SectionTitle>
-                      {learners?.length ? (
-                        <div className="learner-list">
-                          {learners
-                            .filter((l) =>
-                              l.anonymous_id
-                                .toLowerCase()
-                                .includes(search.toLowerCase()),
-                            )
-                            .map((l) => (
-                              <button
-                                className={
-                                  l.id === selectedStudent ? "selected" : ""
-                                }
-                                key={l.id}
-                                onClick={() => {
-                                  setSelectedStudent(l.id);
-                                  setRun(null);
-                                }}
-                              >
-                                <span className="avatar">
-                                  <Users size={17} />
-                                </span>
-                                <span>
-                                  <b>{l.anonymous_id}</b>
-                                  <small>
-                                    Grade {l.grade} · {l.assessments_completed}{" "}
-                                    completed
-                                  </small>
-                                </span>
-                                <ChevronRight size={16} />
-                              </button>
-                            ))}
-                        </div>
-                      ) : (
-                        <Empty title="No learner records yet">
-                          A learner can create an anonymous account from the
-                          sign-in page. No demonstration participants have been
-                          seeded.
-                        </Empty>
-                      )}
-                    </section>
-                  </>
-                )}
-                {loading && (
-                  <Pending label="Loading learning profile…" skeleton />
-                )}
-                {profile && subjects ? (
-                  <LearningProfile
-                    home={!teacher && page === "overview"}
-                    profile={profile}
+              ) : page === "curriculum" ? (
+                <CurriculumStatus token={token} teacher={teacher} />
+              ) : page === "graph" ? (
+                <>
+                  <PageHeader
+                    eyebrow="CONCEPT RELATIONSHIPS"
+                    title="See the connections."
+                    subtitle="Explore prerequisites with their provenance and review status."
+                  />
+                  <label className="subject-select">
+                    Subject
+                    <select
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
+                    >
+                      <option value="all">
+                        All subjects · cross-subject connections
+                      </option>
+                      {subjects?.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <KnowledgeGraph subject={subject} token={token} />
+                </>
+              ) : page === "evidence" && run && baseline && selectedStudent ? (
+                <>
+                  <button
+                    className="text-button"
+                    onClick={() => navigate("progress")}
+                  >
+                    <ArrowLeft size={16} />
+                    Back to learning profile
+                  </button>
+                  <PageHeader
+                    eyebrow="DIAGNOSTIC WORKSPACE"
+                    title="A better question comes next."
+                    subtitle="Keep observations, possible explanations, and verification results distinct."
+                  />
+                  <EvidencePanel
+                    run={run}
                     token={token}
                     teacher={teacher}
-                    subjects={subjects}
-                    onAssessment={(a) => {
-                      setAssessment(a);
-                    }}
-                    onDiagnose={diagnose}
+                    studentId={selectedStudent}
+                    baseline={baseline}
+                    onVerify={nextVerification}
                     onChange={refresh}
                   />
-                ) : (
-                  !teacher &&
-                  !loading &&
-                  !profileError &&
-                  !subjectError && (
-                    <Pending label="Loading your workspace…" skeleton />
-                  )
-                )}
-              </>
-            )}
-          </MotionSection>
+                </>
+              ) : (
+                <>
+                  <PageHeader
+                    eyebrow={
+                      teacher ? "LEARNING, IN FOCUS" : "YOUR LEARNING, IN FOCUS"
+                    }
+                    title={
+                      teacher && !selectedStudent
+                        ? t(
+                            "Every learner has a next step.",
+                            "ดูว่าผู้เรียนควรฝึกอะไรต่อ",
+                          )
+                        : !teacher && page === "overview"
+                          ? `${t("Welcome back,", "ยินดีต้อนรับกลับมา")} ${user.handle}`
+                          : page === "progress"
+                            ? t(
+                                "Watch understanding develop.",
+                                "ติดตามความเข้าใจของคุณ",
+                              )
+                            : t(
+                                "Let curiosity lead the way.",
+                                "เลือกวิชาแล้วเริ่มเรียน",
+                              )
+                    }
+                    subtitle={
+                      teacher
+                        ? "Review the evidence. Test an explanation. Plan an intentional next step."
+                        : t(
+                            "Explore what you know, explain your thinking, and discover what to work on next.",
+                            "เลือกหัวข้อที่อยากฝึกและดูความคืบหน้าของคุณ",
+                          )
+                    }
+                    action={
+                      <Pill>
+                        {teacher
+                          ? t("Teacher view", "มุมมองครู")
+                          : `${t("Student", "นักเรียน")} · ${gradeLabel}`}
+                      </Pill>
+                    }
+                  />
+                  {teacher && (
+                    <>
+                      <div className="stats-grid">
+                        <Stat
+                          label="Learners"
+                          value={learners?.length ?? "—"}
+                          detail="Anonymous local learner records"
+                        />
+                        <Stat
+                          label="Completed assessments"
+                          value={
+                            learners?.reduce(
+                              (n, l) => n + l.assessments_completed,
+                              0,
+                            ) ?? "—"
+                          }
+                          detail="All stages combined"
+                        />
+                        <Stat
+                          label="Selected profile"
+                          value={profile?.anonymous_id || "—"}
+                          detail="Choose a learner below"
+                        />
+                        <Stat
+                          label="Content review"
+                          value="Pending"
+                          detail="Two unvalidated sample packs"
+                        />
+                      </div>
+                      <section className="panel learner-picker">
+                        <SectionTitle
+                          aside={
+                            <div className="search">
+                              <Search size={16} />
+                              <input
+                                aria-label="Find learner"
+                                placeholder="Find anonymous learner"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                              />
+                            </div>
+                          }
+                        >
+                          Learner overview
+                        </SectionTitle>
+                        {learners?.length ? (
+                          <div className="learner-list">
+                            {learners
+                              .filter((l) =>
+                                l.anonymous_id
+                                  .toLowerCase()
+                                  .includes(search.toLowerCase()),
+                              )
+                              .map((l) => (
+                                <button
+                                  className={
+                                    l.id === selectedStudent ? "selected" : ""
+                                  }
+                                  key={l.id}
+                                  onClick={() => {
+                                    setSelectedStudent(l.id);
+                                    setRun(null);
+                                  }}
+                                >
+                                  <span className="avatar">
+                                    <Users size={17} />
+                                  </span>
+                                  <span>
+                                    <b>{l.anonymous_id}</b>
+                                    <small>
+                                      Grade {l.grade} ·{" "}
+                                      {l.assessments_completed} completed
+                                    </small>
+                                  </span>
+                                  <ChevronRight size={16} />
+                                </button>
+                              ))}
+                          </div>
+                        ) : (
+                          <Empty title="No learner records yet">
+                            A learner can create an anonymous account from the
+                            sign-in page. No demonstration participants have
+                            been seeded.
+                          </Empty>
+                        )}
+                      </section>
+                    </>
+                  )}
+                  {loading && (
+                    <Pending label="Loading learning profile…" skeleton />
+                  )}
+                  {profile && subjects ? (
+                    <LearningProfile
+                      home={!teacher && page === "overview"}
+                      profile={profile}
+                      token={token}
+                      teacher={teacher}
+                      subjects={subjects}
+                      onAssessment={(a) => {
+                        setAssessment(a);
+                      }}
+                      onDiagnose={diagnose}
+                      onChange={refresh}
+                    />
+                  ) : (
+                    !teacher &&
+                    !loading &&
+                    !profileError &&
+                    !subjectError && (
+                      <Pending label="Loading your workspace…" skeleton />
+                    )
+                  )}
+                </>
+              )}
+            </MotionSection>
+          </Suspense>
           <footer className="content-footer">
             <span>LBA / Learning Bottleneck Analyzer</span>
             <span>

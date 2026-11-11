@@ -16,8 +16,18 @@ export function useReducedMotion() {
   return reduced;
 }
 
-export function MotionSection({ children }: { children: ReactNode }) {
-  return <div className="motion-enter">{children}</div>;
+export function MotionSection({
+  children,
+  direction = "forward",
+}: {
+  children: ReactNode;
+  direction?: "forward" | "backward";
+}) {
+  return (
+    <div className="motion-enter pane-slide" data-direction={direction}>
+      {children}
+    </div>
+  );
 }
 
 export function LoadingMark({ compact = false }: { compact?: boolean }) {

@@ -1,0 +1,97 @@
+:root {
+  --motion-select: 300ms;
+  --motion-pane: 260ms;
+  --motion-pane-offset: var(--ds-space-16);
+}
+.sliding-group {
+  position: relative;
+  isolation: isolate;
+}
+.sliding-group > button {
+  position: relative;
+  z-index: 1;
+}
+.sliding-highlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: var(--accent);
+  border-radius: var(--slide-radius, var(--ds-radius-full));
+  z-index: 0;
+  will-change: transform;
+}
+.sliding-highlight[data-visible="true"][data-ready="true"] {
+  opacity: 1;
+}
+.sliding-highlight[data-animate="true"] {
+  transition:
+    transform var(--motion-select) var(--motion-ease),
+    width var(--motion-select) var(--motion-ease),
+    height var(--motion-select) var(--motion-ease),
+    background-color var(--motion-select) var(--motion-ease),
+    opacity var(--motion-fast) var(--motion-ease);
+}
+.auth-layout .portal-picker.sliding-group .sliding-highlight {
+  background: var(--portal-accent);
+}
+.auth-layout .portal-picker.sliding-group button[aria-pressed="true"],
+.home-period.sliding-group button[aria-pressed="true"],
+.design-workspace .sidebar nav.sliding-group button.active,
+.design-workspace .sidebar nav.sliding-group button.active:hover {
+  background: transparent;
+}
+.design-workspace .sidebar nav.sliding-group button:active {
+  transform: none;
+}
+.design-workspace .workspace-nav {
+  --slide-radius: var(--ds-radius-full);
+}
+.pane-slide {
+  animation: lba-pane-slide var(--motion-pane) var(--motion-ease) both;
+}
+.pane-slide[data-direction="backward"] {
+  --motion-pane-offset: calc(var(--ds-space-16) * -1);
+}
+.pane-slide.motion-enter .stat,
+.pane-slide.motion-enter .subject-card {
+  animation: none;
+}
+@keyframes lba-pane-slide {
+  from {
+    opacity: 0.8;
+    transform: translateX(var(--motion-pane-offset));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes lba-pane-fade {
+  from {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 760px) {
+  .design-workspace .workspace-nav {
+    --slide-radius: var(--ds-radius-16);
+  }
+  :root {
+    --motion-select: 240ms;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sliding-highlight {
+    transition: none !important;
+  }
+  .pane-slide {
+    animation: lba-pane-fade 160ms ease both !important;
+    transform: none !important;
+  }
+}

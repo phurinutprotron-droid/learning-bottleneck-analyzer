@@ -10,6 +10,7 @@ import {
 import { Brand } from "../components/ui";
 import { LoadingMark } from "../components/motion";
 import { JudgeLogin } from "./JudgeLogin";
+import { SlidingHighlight } from "../components/SlidingHighlight";
 import {
   collectIssues,
   FormFeedback,
@@ -91,6 +92,7 @@ export function AuthPage({
     researcher: t("Researcher", "นักวิจัย"),
   };
   const title = names[portal];
+  const [portalDirection, setPortalDirection] = useState("forward");
   const activePortal = judgeMode ? "judge" : portal;
   function openJudgeMode(value: boolean) {
     setJudgeMode(value);
@@ -194,16 +196,23 @@ export function AuthPage({
           ) : (
             <>
               <nav
-                className="portal-picker"
+                className="portal-picker sliding-group"
                 aria-label={t("Sign-in portal", "ประเภทผู้ใช้")}
               >
+                <SlidingHighlight activeKey={portal} />
                 {portals.map((choice) => (
                   <button
                     key={choice}
                     type="button"
                     aria-pressed={portal === choice}
+                    data-slide-active={portal === choice}
                     disabled={busy}
                     onClick={() => {
+                      setPortalDirection(
+                        portals.indexOf(choice) >= portals.indexOf(portal)
+                          ? "forward"
+                          : "backward",
+                      );
                       setPortal(choice);
                       setRegister(false);
                       setError("");
@@ -214,7 +223,11 @@ export function AuthPage({
                   </button>
                 ))}
               </nav>
-              <div className="portal-content motion-enter" key={portal}>
+              <div
+                className="portal-content pane-slide"
+                data-direction={portalDirection}
+                key={portal}
+              >
                 <h2>
                   {register
                     ? t("Create a learner account", "สร้างบัญชีนักเรียน")

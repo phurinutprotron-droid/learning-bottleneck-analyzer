@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { SlidingHighlight } from "../components/SlidingHighlight";
 import {
   ArrowUpRight,
   BookOpen,
@@ -137,14 +138,16 @@ export function HomeOverview({
               {t("Learning activity", "กิจกรรมการเรียนรู้")}
             </h2>
             <div
-              className="home-period"
+              className="home-period sliding-group"
               role="group"
               aria-label={t("Activity period", "ช่วงเวลากิจกรรม")}
             >
+              <SlidingHighlight activeKey={period} />
               <button
                 type="button"
                 data-period="weeks"
                 aria-pressed={period === "weeks"}
+                data-slide-active={period === "weeks"}
                 onClick={() => setPeriod("weeks")}
               >
                 {t("Weekly", "รายสัปดาห์")}
@@ -153,6 +156,7 @@ export function HomeOverview({
                 type="button"
                 data-period="months"
                 aria-pressed={period === "months"}
+                data-slide-active={period === "months"}
                 onClick={() => setPeriod("months")}
               >
                 {t("Monthly", "รายเดือน")}
@@ -178,9 +182,7 @@ export function HomeOverview({
             <div className="home-bars" aria-hidden="true">
               {buckets.map((bucket, i) => (
                 <div className="home-bar-column" key={i}>
-                  <div
-                    className="home-bar-space"
-                  >
+                  <div className="home-bar-space">
                     <b>{bucket.count}</b>
                     <div
                       className="home-bar-fill"

@@ -1,5 +1,13 @@
 # Shared LBA interface
 
+## Selection sliding — 2026-11-11
+
+The owner requested smooth sliding after selecting a button. A shared persistent highlight now follows sign-in portal buttons, workspace destinations and the Home activity-period control. It measures actual button bounds and follows scrolling, font/language changes and responsive layout. CSS transitions retarget the existing marker during rapid clicks. The first measurement is placed without animation, and observers/frames are cleaned up for unmount and React StrictMode replay.
+
+Page content enters with a small directional horizontal movement. The Suspense boundary wraps content so navigation stays mounted during the first lazy research/graph load. Reduced motion uses a static highlight with a short opacity-only content fade. Existing pressed/current-page semantics and button focus remain on the controls.
+
+Local Chromium verified six intermediate movement samples, final alignment, rapid retargeting without remount, language changes, 320/390/1440px layouts, mobile teacher-menu scrolling and reduced-motion computed styles. No runtime exceptions were observed. The existing 18 frontend tests are retained. The live browser check also verifies marker alignment and persistence across lazy content.
+
 The owner approved the learner Home reference for all pages on 2026-11-10. The common materials are a light gray canvas, rounded white cards, green actions, a compact desktop navigation rail and a labelled mobile dock. Teacher and researcher sign-in retain distinct teal and muted violet accents with the existing motto crossfade.
 
 ## Implementation
