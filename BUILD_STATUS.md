@@ -1,5 +1,13 @@
 # LBA build status
 
+## One hundred simulated students — 2026-11-12
+
+- Imported 100 explicitly synthetic, login-disabled student identities into the existing online Neon database. Grades 7/8/9: 34/33/33. Ten not started, fifteen in progress and seventy-five with completed mathematics/science sample baselines.
+- Persisted 165 assessments (150 complete, 15 open) and 933 generated responses graded by existing rules. Existing subject snapshots and all nine pre-existing user rows were preserved.
+- Demo flags exclude the cohort from ordinary production student/research views. Research staff can explicitly include demo records. No human consent, AI review, diagnostic completion, intervention or learning gain was fabricated.
+- Full local backend suite: 49 passed, including five new cohort tests. Live database counts verified; synthetic sign-in returned 401, health returned 200, and no synthetic sessions/consents were created. See [dataset and reproduction details](docs/SIMULATED_STUDENTS.md).
+
+
 ## Smooth selection and content entry — 2026-11-11
 
 - Added one persistent sliding highlight for the sign-in portal, workspace navigation and Home activity-period controls. Button bounds, responsive changes, language changes and mobile scrolling are measured directly.
